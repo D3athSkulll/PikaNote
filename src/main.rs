@@ -1,4 +1,4 @@
-#![warn(clippy::all, clippy::pedantic)]// activate warning for clippy
+#![warn(clippy::all, clippy::pedantic, clippy::print_stdout)]// activate warning for clippy
 
 mod editor;
 use editor::Editor;
