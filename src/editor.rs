@@ -19,14 +19,6 @@ impl Editor {
         Terminal::terminate().unwrap();
         result.unwrap();
     }
-
-    
-    
-
-    
-
-    
-
     fn repl(&mut self) -> Result<(),
     Error> {
         loop{
@@ -78,9 +70,10 @@ impl Editor {
 
     fn draw_rows()-> Result<(),  Error>{
         let Size{height, ..} = Terminal::size()?;
+        let draw_symbol = "⚡";
         for current_row in 0..height{
             Terminal::clear_current_line()?;
-            Terminal::print("~");
+            Terminal::print(draw_symbol);
             if current_row +1 <height{
                 Terminal::print("\r\n");
             }
