@@ -1,4 +1,4 @@
-# Text Editor in Rust - PikaNote
+# PikaNote
 
 A lightweight, terminal-based text editor built from scratch in **Rust** — inspired by the design philosophy of [hecto](https://github.com/raphlinus/hecto). This project is a learning-focused implementation of core editor functionality with a clean and efficient approach to terminal rendering.
 
