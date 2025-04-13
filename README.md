@@ -18,7 +18,7 @@ A lightweight, terminal-based text editor built from scratch in **Rust** — ins
   Automatically clears the terminal screen on startup for a fresh session.
 
 - **Line Decoration**  
-  Displays a `~` symbol at the beginning of each line for a minimalist layout.
+  Displays a `⚡` symbol at the beginning of each line for a distinguished layout.
 
 - **Cursor Hiding**  
   Cursor is hidden during runtime using terminal control for a focused UI.
