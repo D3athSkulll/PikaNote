@@ -43,6 +43,10 @@ Planned features will follow the development roadmap outlined in [hecto's docume
 - Undo/redo functionality
 
 ---
+## 🖼️ Terminal UI Preview
+Completion uptill now
+
+![PikaNote Terminal UI](images/Screenshot%20from%202025-04-13%2012-28-18.png)
 
 ## Getting Started
 
