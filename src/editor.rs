@@ -2,7 +2,10 @@ use crossterm::{event::{read, Event::{self, Key} ,KeyCode::Char, KeyEvent, KeyMo
 use std::io::Error;
 
 mod terminal;
-use terminal::{Terminal,Size,Position};
+use terminal::{Position, Size, Terminal};
+
+const NAME: &str = env!("CARGO_PKG_NAME");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct Editor {
     should_quit: bool
@@ -68,12 +71,36 @@ impl Editor {
         
     }
 
+    fn draw_welcome_message()-> Result<(),Error>{
+        let mut welcome_message = format!("{NAME} editor -- version {VERSION}");
+        let width = Terminal::size()?.width as usize;
+        let len = welcome_message.len();
+        let padding = (width - len)/2;
+        let spaces = " ".repeat(padding-1);
+        let draw_symbol = Self::draw_symbol_string();
+        welcome_message = format!("{draw_symbol}{spaces}{welcome_message}");
+        welcome_message.truncate(width);
+        Terminal::print(&welcome_message)?;
+        Ok(())
+
+    } 
+    
+    fn draw_empty_row() -> Result<(), Error> {
+        let draw_symbol = Self::draw_symbol_string();
+        Terminal::print({draw_symbol})?;
+        Ok(())
+    }
+
     fn draw_rows()-> Result<(),  Error>{
         let Size{height, ..} = Terminal::size()?;
-        let draw_symbol = "⚡";
+        let draw_symbol = Self::draw_symbol_string();
         for current_row in 0..height{
             Terminal::clear_current_line()?;
-            Terminal::print(draw_symbol);
+          if current_row ==2* height / 3 {
+                Self::draw_welcome_message()?;
+            } else {
+                Self::draw_empty_row()?;
+            }
             if current_row +1 <height{
                 Terminal::print("\r\n");
             }
@@ -81,4 +108,10 @@ impl Editor {
         Ok(())
     }
 
+    //my addition
+    fn draw_symbol_string()->&'static str{
+        "⚡"
+    }
+
 }
+
