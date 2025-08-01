@@ -53,10 +53,10 @@ impl Terminal {
         Self::queue_command(Show)?;
         Ok(())
     }
-    pub fn print<T: Display>(string: T) -> Result<(), Error> {
-        Self::queue_command(Print(string))?;
-        Ok(())
-    }
+    pub fn print(string: &str) -> Result<(), Error> {
+    Self::queue_command(Print(string))?;
+    Ok(())
+}
     pub fn size() -> Result<Size, Error> {
          let (width_u16, height_u16) = size()?;
          #[allow(clippy::as_conversions)]
