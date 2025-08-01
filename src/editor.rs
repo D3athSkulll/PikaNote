@@ -64,13 +64,19 @@ impl Editor {
         let len = welcome_message.len();
         let padding = (width - len) / 2;
         let spaces = " ".repeat(padding - 1);
-        welcome_message = format!("⚡{spaces}{welcome_message}");
+        let draw_symbol = Self::draw_symbol_fn();
+        welcome_message = format!("{draw_symbol}{spaces}{welcome_message}");
         welcome_message.truncate(width);
         Terminal::print(welcome_message)?;
         Ok(())
     }
+
+    // implemented draw_symbol fn
+    fn draw_symbol_fn() -> &'static str {
+        "⚡"
+    }
     fn draw_empty_row() -> Result<(), Error> {
-        Terminal::print("⚡")?;
+        Terminal::print(Self::draw_symbol_fn())?;
         Ok(())
     }
     fn draw_rows() -> Result<(), Error> {
