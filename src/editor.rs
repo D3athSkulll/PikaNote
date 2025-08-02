@@ -11,8 +11,7 @@ use view::View;
 mod terminal;
 use terminal::{Position, Size, Terminal};
 
-const NAME: &str = env!("CARGO_PKG_NAME");
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Copy, Clone, Default)]
 struct Location{
     x: usize,
@@ -131,8 +130,5 @@ impl Editor {
     }
     
 
-    // implemented draw_symbol fn
-    fn draw_symbol_fn() -> &'static str {
-        "⚡"
-    }
+    
     }
