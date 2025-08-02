@@ -8,6 +8,8 @@ use crossterm::event::{
 use std::io::Error;
 mod view;
 use view::View;
+
+
 mod terminal;
 use terminal::{Position, Size, Terminal};
 
@@ -23,6 +25,7 @@ struct Location{
 pub struct Editor {
     location: Location,
     should_quit: bool,
+    view: View,
 }
 
 impl Editor {
@@ -80,7 +83,7 @@ impl Editor {
     }
     fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
 
-        let Size{width, height} = Terminal::size().unwrap();
+        
         if let Key(KeyEvent {
             code,
             modifiers,
@@ -117,7 +120,7 @@ impl Editor {
             Terminal::clear_screen()?;
             Terminal::print("Goodbye.\r\n")?;
         } else {
-            View::render()?;
+            self.view.render()?;
             Terminal::move_caret_to(Position {
                 col: self.location.x,
                 row: self.location.y,
