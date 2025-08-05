@@ -1,0 +1,9 @@
+I have two kids, and they can’t get enough sweets, ever. For all they care, they would just eat one, ask for more, and then eat another one. Let’s say I went shopping and come back with a huge bag full of groceries, some of them sweets. Every time they yell “Next!” I grab into the back and pull out some tasty treat, until I run out of things and then I return nothing. I am an Iterator then, and I am iterating over the sweets in the bag.
+
+What a for treat in dads_bag loop does is that it calls next() on the Iterator dads_bag and passes the result as treat to the block that follows. If next() returns None, then the for..in loop ends.
+
+It’s important to understand that iterators are lazy, meaning that they generally don’t know if there is something in that bag until you call next - they compute their items as they are needed and not all at once. This can come in handy if whatever you’re pulling out of that bag is difficult to manage (angry stray cats for example, or maybe the metaphor just breaks down here) and you don’t need to know in advance how many things actually are in that bag.
+
+Iterators have a few convenience methods, and .collect() is one of them. It depletes the iterator and stores all the results in a Vec, and is the technical equivalent of my kids yelling next at me rapidly until I hand over all the treats and they can manage them themselves.
+
+A Vec is also an Iterator, it implements the corresponding trait. He
