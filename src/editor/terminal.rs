@@ -1,18 +1,18 @@
-
-
 use crossterm::cursor::{Hide, MoveTo, Show};
 use crossterm::style::Print;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode, size, Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen};
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, size, Clear, ClearType, EnterAlternateScreen,
+    LeaveAlternateScreen,
+};
 use crossterm::{queue, Command};
 use std::io::{stdout, Error, Write};
 
-
-#[derive(Copy, Clone,Default)]
+#[derive(Copy, Clone, Default)]
 pub struct Size {
     pub height: usize,
     pub width: usize,
 }
-#[derive(Copy, Clone,Default)]
+#[derive(Copy, Clone, Default)]
 pub struct Position {
     pub col: usize,
     pub row: usize,
@@ -31,7 +31,7 @@ impl Terminal {
         enable_raw_mode()?;
         Self::enter_alternate_screen()?;
         Self::clear_screen()?;
-        
+
         Self::execute()?;
         Ok(())
     }
@@ -65,18 +65,18 @@ impl Terminal {
         Ok(())
     }
     pub fn print(string: &str) -> Result<(), Error> {
-    Self::queue_command(Print(string))?;
-    Ok(())
-}
-pub fn print_row(row: usize, line_text: &str) -> Result<(), Error> {
+        Self::queue_command(Print(string))?;
+        Ok(())
+    }
+    pub fn print_row(row: usize, line_text: &str) -> Result<(), Error> {
         Self::move_caret_to(Position { row, col: 0 })?;
         Self::clear_line()?;
         Self::print(line_text)?;
         Ok(())
     }
     pub fn size() -> Result<Size, Error> {
-         let (width_u16, height_u16) = size()?;
-         #[allow(clippy::as_conversions)]
+        let (width_u16, height_u16) = size()?;
+        #[allow(clippy::as_conversions)]
         let height = height_u16 as usize;
         #[allow(clippy::as_conversions)]
         let width = width_u16 as usize;
@@ -87,7 +87,7 @@ pub fn print_row(row: usize, line_text: &str) -> Result<(), Error> {
         Ok(())
     }
 
-    fn queue_command<T:Command>(command: T) -> Result<(), Error> {
+    fn queue_command<T: Command>(command: T) -> Result<(), Error> {
         queue!(stdout(), command)?;
         Ok(())
     }

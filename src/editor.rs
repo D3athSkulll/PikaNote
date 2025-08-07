@@ -37,29 +37,31 @@ impl Editor {
             let _ = Terminal::terminate();
             current_hook(panic_info);
         }));
-        Terminal::initialize()?;
-         let mut view = View::default();
+        Terminal::initialize()?; // Setup terminal (alternate screen, raw mode)
+
+        let mut view = View::default(); // Create default View (which includes buffer)
+
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1) {
-            view.load(file_name);
+            view.load(file_name);// Load file into buffer if filename given 
         }
         Ok(Self {
             should_quit: false,
-            location: Location::default(),
+            location: Location::default(), // cursor at (0,0)
             view,
         })
     }
 
    pub  fn run(&mut self) {
         loop{
-            let _ = self.refresh_screen();
+            let _ = self.refresh_screen(); // draw UI
 
             if self.should_quit{
                 break;
             }
 
             match read(){
-                Ok(event)=>self.evaluate_event(event),
+                Ok(event)=>self.evaluate_event(event), // listen to keyboard or screen resize events
                 error   =>{
                     #[cfg(debug_assertions)]{
                         panic!("Could not read event: {error:?}" );
@@ -99,7 +101,7 @@ impl Editor {
             }
             _ => (),
         }
-        self.location = Location { x, y };
+        self.location = Location { x, y }; // update location of cursor to new location as per special key press
         
     }
 
@@ -126,7 +128,7 @@ impl Editor {
                     |KeyCode::End,
                     _,
                 )=>{
-                    self.move_point(code);
+                    self.move_point(code); // move the cursor according to keypress
                 }
                 _=>{}
             },
@@ -137,7 +139,7 @@ impl Editor {
                 #[allow(clippy::as_conversations)]
                 let width = width_u16 as usize;
             
-                self.view.resize(Size { height, width });
+                self.view.resize(Size { height, width }); // resize the ui and text according to new Size parameters
             }
             _=>{}
         }
@@ -147,7 +149,7 @@ impl Editor {
       
     fn refresh_screen(&mut self) -> Result<(), Error> {
         let _ = Terminal::hide_caret()?;
-        self.view.render();
+        self.view.render();// draws the file/buffer/render text
         let _ = Terminal::move_caret_to(Position{
             col: self.location.x,
             row: self.location.y,
@@ -155,7 +157,7 @@ impl Editor {
         
         
         let _ = Terminal::show_caret()?;
-        let _ =Terminal::execute()?;
+        let _ =Terminal::execute()?; // flushes commands
         Ok(())
     }
     }
@@ -167,4 +169,4 @@ impl Editor {
                 let _ = Terminal::print("Goodbye. \r\n");
             }
         }
-    }
+    }// enables proper cleanup  regardless of panic or quit

@@ -10,10 +10,12 @@ impl Buffer {
     pub fn load(file_name: &str) -> Result<Self, Error> {
         let contents = read_to_string(file_name)?;
         let mut lines = Vec::new();
+
         for value in contents.lines() {
             lines.push(String::from(value));
-        }
-        Ok(Self { lines })
+        } // loading content of lines of text file into lines Vector
+
+        Ok(Self { lines }) 
     }
     pub fn is_empty(&self) -> bool{
         self.lines.is_empty()

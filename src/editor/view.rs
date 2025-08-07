@@ -30,7 +30,7 @@ impl View{
     pub fn render(&mut self){
         if !self.needs_redraw{
             return ;
-        }
+        } // if screen size doesnt change come out of loop
 
         let Size{height,width}=self.size;
         if height==0|| width==0{
@@ -38,33 +38,33 @@ impl View{
         }
 
         #[allow(clippy::integer_division)]
-        let vertical_center = 2* height / 3;
+        let vertical_center = 2* height / 3; //  
 
         for current_row in 0..height{
-            if let Some(line) = self.buffer.lines.get(current_row){
+            if let Some(line) = self.buffer.lines.get(current_row){ // checking 
                 let truncated_line = if line.len() >= width{
                     &line[0..width]
-                }else{
+                }// checking if buffer has content and truncating if content exceeds width
+                else{
                     line
                 };
-            Self::render_line(current_row, truncated_line);
+
+            Self::render_line(current_row, truncated_line); // rendering content on row
+
             }else if current_row == vertical_center && self.buffer.is_empty(){
+
                 Self::render_line(current_row, &Self::build_welcome_message(width));
+
             }else{
                 let draw_symbol= Self::draw_symbol_fn();
                 Self::render_line(current_row, draw_symbol);
-            }
+            }//filler symbol for no content on line
         }
         self.needs_redraw=false;
         
     }
 
    
-
-  
-
-    
-
     fn build_welcome_message(width: usize)-> String{
         if width==0{
             return " ".to_string();
