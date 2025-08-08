@@ -1,4 +1,4 @@
-
+use unicode_segmentation::UnicodeSegmentation;
 use super::{
     editorcommand::{Direction, EditorCommand},
     terminal::{Position,Size,Terminal}
