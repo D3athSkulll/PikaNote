@@ -71,14 +71,16 @@ impl View {
         let grapheme_delta = new_len.saturating_sub(old_len);
         if grapheme_delta>0{
             //move right for added grapheme
-            self.move_right();
+            self.move_text_location(&Direction::Right);
         }
         self.needs_redraw=true;
     }
 
     fn backspace(&mut self){
-        self.move_left();
-        self.delete();
+         if self.text_location.line_index != 0 || self.text_location.grapheme_index != 0 {
+            self.move_text_location(&Direction::Left);
+            self.delete();
+        }
     }
     fn delete(&mut self){
        self.buffer.delete(self.text_location);
@@ -136,8 +138,8 @@ impl View {
         // it's allowed to be a bit to the left or right.
         #[allow(clippy::integer_division)]
         let padding = (width.saturating_sub(len).saturating_sub(1)) / 2;
-
-        let mut full_message = format!("~{}{}", " ".repeat(padding), welcome_message);
+        let draw_symbol = Self::draw_symbol_fn();
+        let mut full_message = format!("{draw_symbol}{}{}", " ".repeat(padding), welcome_message);
         full_message.truncate(width);
         full_message
     }
