@@ -38,4 +38,9 @@ impl Buffer {
             line.insert_char(character, at.grapheme_index);
         }// if in document middle let line handle the insertion
     }
+    pub fn delete(&mut self, at: Location){
+        if let Some(line) = self.lines.get_mut(at.line_index){
+            line.delete(at.grapheme_index);
+        }
+    }
 }
