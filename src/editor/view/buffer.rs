@@ -1,12 +1,14 @@
 use std::io::Error;
-
+use std::fs::{read_to_string,File};
 use super::line::Line;
 use super::Location;
-use std::fs::read_to_string;
+use std::io::Write;
+
 
 #[derive(Default)]
 pub struct Buffer {
-    pub lines: Vec<Line> 
+    pub lines: Vec<Line>,
+    file_name: Option<String>
 }
 
 impl Buffer {
@@ -18,7 +20,19 @@ impl Buffer {
             lines.push(Line::from(value));
         } // loading content of lines of text file into lines Vector
 
-        Ok(Self { lines }) 
+        Ok(Self {
+            lines,
+            file_name: Some(file_name.to_string()),
+        }) 
+    }
+    pub fn save(&self)->Result<(),Error>{
+        if let Some(file_name)= &self.file_name{
+            let mut file = File::create(file_name)?;
+            for line in &self.lines{
+                writeln!(file,"{line}");
+            }
+        }
+        Ok(())
     }
     pub fn is_empty(&self) -> bool{
         self.lines.is_empty()
@@ -63,6 +77,6 @@ impl Buffer {
             let new = line.split(at.grapheme_index);
             self.lines.insert(at.line_index.saturating_add(1),new);
         }//if in mid of doc, split current line and add splitted to self.lines at proper index
-        
+
     }
 }
