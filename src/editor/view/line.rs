@@ -1,6 +1,6 @@
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
-use std::{ fmt::{self, Formatter},ops::Range};
+use std::{ fmt::{self},ops::Range};
 
 #[derive(Clone, Copy)]
 enum GraphemeWidth{
@@ -24,6 +24,8 @@ struct TextFragment{
     replacement: Option<char>
 
 }
+
+#[derive(Default)]
 pub struct Line{
     fragments: Vec<TextFragment>,
 }
@@ -138,25 +140,35 @@ impl Line{
             .sum()
     }
 
-    pub fn insert_char(&mut self, character: char, grapheme_index: usize){
-        let mut result = String::new();
+    pub fn insert_char(&mut self, character: char, at: usize) {
+    const TAB_WIDTH: usize = 5; // number of spaces per tab
+    let mut result = String::new();
 
-        for(index, fragment) in self.fragments.iter().enumerate(){
-            if index == grapheme_index{
-                result.push(character)
-            }//if at place of insertion, push character to result string
-            result.push_str(&fragment.grapheme);
-            if grapheme_index >= self.fragments.len(){
+    for (index, fragment) in self.fragments.iter().enumerate() {
+        if index == at {
+            // if at place of insertion, push character to result string
+            if character == '\t' {
+                result.push_str(&" ".repeat(TAB_WIDTH)); // expand tab into spaces
+            } else {
                 result.push(character);
-            }//ensuring to push character even at end of line
-           
+            }
         }
-         self.fragments = Self::str_to_fragments(&result);// rebuild the structure
+        result.push_str(&fragment.grapheme);
+        if at >= self.fragments.len() {
+            if character == '\t' {
+                result.push_str(&" ".repeat(TAB_WIDTH)); // expand tab into spaces
+            } else {
+                result.push(character);
+            }
+        }//ensuring to push character even at end of line
     }
-    pub fn delete(&mut self, grapheme_index: usize){
+    self.fragments = Self::str_to_fragments(&result);// rebuild the structure
+}
+
+    pub fn delete(&mut self, at: usize){
         let mut result = String::new();
         for (index,fragment) in self.fragments.iter().enumerate(){
-            if index != grapheme_index{
+            if index != at{
                 result.push_str(&fragment.grapheme);
 
             }
@@ -166,11 +178,21 @@ impl Line{
         self.fragments=Self::str_to_fragments(&result);
     }
 
+
+
     pub fn append(&mut self, other: &Self){
         let mut concat = self.to_string();
         concat.push_str(&other.to_string());
         self.fragments=Self::str_to_fragments(&concat);
 
+    }
+
+    pub fn split(&mut self,at: usize)->Self{
+        if at>self.fragments.len(){
+            return Self::default();
+        }
+        let remainder = self.fragments.split_off(at);
+        Self { fragments: remainder, }
     }
    
     

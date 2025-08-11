@@ -3,7 +3,7 @@ use super::{
     terminal::{Position, Size, Terminal},
 };
 use std::cmp::min;
-use unicode_segmentation::UnicodeSegmentation;
+
 
 use self::line::Line;
 
@@ -35,7 +35,9 @@ impl View {
             EditorCommand::Quit => {},
             EditorCommand::Insert(character) => self.insert_char(character),
             EditorCommand::Delete => self.delete(),
-            EditorCommand::Backspace => self.backspace(),
+            EditorCommand::Backspace => self.delete_backward(),
+            EditorCommand::Enter => self.insert_newline(),
+            
         }
     }
 
@@ -69,14 +71,23 @@ impl View {
             .get(self.text_location.line_index)
             .map_or(0,Line::grapheme_count);//do same thing again
         let grapheme_delta = new_len.saturating_sub(old_len);
+
+        
         if grapheme_delta>0{
             //move right for added grapheme
+            for _ in 0..grapheme_delta {
             self.move_text_location(&Direction::Right);
         }
         self.needs_redraw=true;
+    }}
+
+    fn insert_newline(&mut self){
+        self.buffer.insert_newline(self.text_location);
+        self.move_text_location(&Direction::Right);
+        self.needs_redraw=true;
     }
 
-    fn backspace(&mut self){
+    fn delete_backward(&mut self){
          if self.text_location.line_index != 0 || self.text_location.grapheme_index != 0 {
             self.move_text_location(&Direction::Left);
             self.delete();
