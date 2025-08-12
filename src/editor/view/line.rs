@@ -140,30 +140,21 @@ impl Line{
             .sum()
     }
 
-    pub fn insert_char(&mut self, character: char, at: usize) {
-    const TAB_WIDTH: usize = 5; // number of spaces per tab
-    let mut result = String::new();
+    pub fn insert_char(&mut self, character: char, at: usize){
+        let mut result = String::new();
 
-    for (index, fragment) in self.fragments.iter().enumerate() {
-        if index == at {
-            // if at place of insertion, push character to result string
-            if character == '\t' {
-                result.push_str(&" ".repeat(TAB_WIDTH)); // expand tab into spaces
-            } else {
+        for(index, fragment) in self.fragments.iter().enumerate(){
+            if index == at{
+                result.push(character)
+            }//if at place of insertion, push character to result string
+            result.push_str(&fragment.grapheme);
+            if at >= self.fragments.len(){
                 result.push(character);
-            }
+            }//ensuring to push character even at end of line
+           
         }
-        result.push_str(&fragment.grapheme);
-        if at >= self.fragments.len() {
-            if character == '\t' {
-                result.push_str(&" ".repeat(TAB_WIDTH)); // expand tab into spaces
-            } else {
-                result.push(character);
-            }
-        }//ensuring to push character even at end of line
+         self.fragments = Self::str_to_fragments(&result);// rebuild the structure
     }
-    self.fragments = Self::str_to_fragments(&result);// rebuild the structure
-}
 
     pub fn delete(&mut self, at: usize){
         let mut result = String::new();

@@ -80,11 +80,11 @@ impl View {
         
         if grapheme_delta>0{
             //move right for added grapheme
-            for _ in 0..grapheme_delta {
             self.move_text_location(&Direction::Right);
         }
         self.needs_redraw=true;
-    }}
+    }
+    //issue tab is still detected as one blank space fix here and in line.rs
 
     fn insert_newline(&mut self){
         self.buffer.insert_newline(self.text_location);
