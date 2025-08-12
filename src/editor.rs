@@ -14,9 +14,24 @@ use editorcommand::EditorCommand;
 mod terminal;
 use terminal::Terminal;
 
+mod statusbar;
+use statusbar::StatusBar;
+
+#[derive(Default,PartialEq,Eq,Debug)] // Eq and partial eq allows comparisons  for checking status of rendering two cycles
+
+pub struct DocumentStatus{
+    total_lines: usize,
+    current_line_index: usize,
+    is_modified: bool,
+    file_name: Option<String>,
+}
+
+
+
 pub struct Editor {
     should_quit: bool,
     view: View,
+    status_bar: StatusBar
 }
 
 impl Editor {
@@ -28,7 +43,7 @@ impl Editor {
         }));
         Terminal::initialize()?; // Setup terminal (alternate screen, raw mode)
 
-        let mut view = View::default(); // Create default View (which includes buffer)
+        let mut view = View::new(2); // Create default View (which includes buffer)of layout parameter 2
 
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1) {
@@ -37,6 +52,7 @@ impl Editor {
         Ok(Self {
             should_quit: false,
             view,
+            status_bar: StatusBar::new(1) // status bar also has a margin_bottom parameter
         })
     }
 
@@ -57,6 +73,8 @@ impl Editor {
                     }
                 }
             }
+            let status = self.view.get_status();
+            self.status_bar.update_status(status);
         }
     }
 
@@ -72,6 +90,9 @@ impl Editor {
                     self.should_quit = true;
                 } else {
                     self.view.handle_command(command);
+                    if let EditorCommand::Resize(size) = command{
+                        self.status_bar.resize(size);
+                    }// if the terminal is resized the status bar should also be resized
                 }
             
         } else {
@@ -85,6 +106,7 @@ impl Editor {
     fn refresh_screen(&mut self) -> Result<(), Error> {
         let _ = Terminal::hide_caret()?;
         self.view.render(); // draws the file/buffer/render text
+        self.status_bar.render();//draws the status bar
         let _ = Terminal::move_caret_to(self.view.caret_position());
 
         let _ = Terminal::show_caret()?;

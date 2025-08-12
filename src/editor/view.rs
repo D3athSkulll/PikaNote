@@ -1,6 +1,7 @@
 use super::{
     editorcommand::{Direction, EditorCommand},
     terminal::{Position, Size, Terminal},
+    DocumentStatus
 };
 use std::cmp::min;
 
@@ -28,10 +29,46 @@ pub struct View {
 }
 
 impl View {
+    pub fn new(margin_bottom: usize)-> Self{
+        let terminal_size = Terminal::size().unwrap_or_default();
+        Self{
+            buffer: Buffer::default(),
+            needs_redraw: true,
+            size: Size {
+                    height: terminal_size.height.saturating_sub(margin_bottom),
+                    width: terminal_size.width 
+            },
+            text_location: Location::default(),
+            scroll_offset: Position::default(),
+        }
+    }
+
+    pub fn get_status(&self)-> DocumentStatus{
+        DocumentStatus {
+            total_lines: self.buffer.height(),
+            current_line_index: self.text_location.line_index,
+            file_name: self.buffer.file_name.clone(),
+            is_modified: self.buffer.dirty, 
+        }
+    }
+
+     //region:File io
+    pub fn load(&mut self, file_name: &str) {
+        if let Ok(buffer) = Buffer::load(file_name) {
+            self.buffer = buffer;
+            self.needs_redraw = true;
+        }
+    }
+     fn save(&mut self) {
+        let _ = self.buffer.save();
+     }// saving modifies buffer by resetting dirty flag
+    
+    //end region
+    // region: CommandHandling
     pub fn handle_command(&mut self, command: EditorCommand) {
         match command {
             EditorCommand::Resize(size) => self.resize(size),
-            EditorCommand::Move(direction) => self.move_text_location(&direction),
+            EditorCommand::Move(direction) => self.move_text_location(direction),
             EditorCommand::Quit => {},
             EditorCommand::Insert(character) => self.insert_char(character),
             EditorCommand::Delete => self.delete(),
@@ -46,18 +83,8 @@ impl View {
         self.scroll_text_location_into_view();
         self.needs_redraw = true;
     }
-    //region:File io
-    pub fn load(&mut self, file_name: &str) {
-        if let Ok(buffer) = Buffer::load(file_name) {
-            self.buffer = buffer;
-            self.needs_redraw = true;
-        }
-    }
-     fn save(&self) {
-        let _ = self.buffer.save();
-     }
-    
-    //end region
+    //endregion
+   
     
 
     //region : Text editing\
@@ -80,7 +107,7 @@ impl View {
         
         if grapheme_delta>0{
             //move right for added grapheme
-            self.move_text_location(&Direction::Right);
+            self.move_text_location(Direction::Right);
         }
         self.needs_redraw=true;
     }
@@ -88,13 +115,13 @@ impl View {
 
     fn insert_newline(&mut self){
         self.buffer.insert_newline(self.text_location);
-        self.move_text_location(&Direction::Right);
+        self.move_text_location(Direction::Right);
         self.needs_redraw=true;
     }
 
     fn delete_backward(&mut self){
          if self.text_location.line_index != 0 || self.text_location.grapheme_index != 0 {
-            self.move_text_location(&Direction::Left);
+            self.move_text_location(Direction::Left);
             self.delete();
         }
     }
@@ -218,7 +245,7 @@ impl View {
     //end region
     // region: text location movement
 
-    fn move_text_location(&mut self, direction: &Direction) {
+    fn move_text_location(&mut self, direction: Direction) {
         let Size { height, .. } = self.size;
         match direction {
             Direction::Up => self.move_up(1),
