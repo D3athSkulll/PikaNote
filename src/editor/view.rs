@@ -230,8 +230,22 @@ impl View {
     // region: Location and position handling
 
     pub fn caret_position(&self) -> Position {
-        self.text_location_to_position()
-            .saturating_sub(self.scroll_offset)
+       let row = self.text_location.line_index;
+    let col = if let Some(line) = self.buffer.lines.get(row) {
+        let gi = self.text_location.grapheme_index;
+        let last = line.grapheme_count();
+
+        if gi > 0 && gi == last {
+            // End-of-line: place caret ON the last grapheme
+            line.width_until(last - 1)
+        } else {
+            line.width_until(gi)
+        }
+    } else {
+        0
+    };
+
+    Position { row, col }.saturating_sub(self.scroll_offset)
     }
 
     pub fn text_location_to_position(&self) -> Position {
