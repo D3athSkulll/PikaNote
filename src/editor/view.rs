@@ -138,35 +138,32 @@ impl View {
     // region: Rendering
 
     pub fn render(&mut self) {
-        if !self.needs_redraw || self.size.height == 0 {
-            return;
-        } // if screen size doesnt change come out of loop  or view is not visible on narrow terminal
-
-        let Size { height, width } = self.size;
-        if height == 0 || width == 0 {
-            return;
-        }
-        // Reserve the last row for the status bar
-        let text_area_height = height.saturating_sub(2);
-
-        #[allow(clippy::integer_division)]
-        let vertical_center = height / 3;
-        let top = self.scroll_offset.row;
-
-        for current_row in 0..text_area_height {
-            if let Some(line) = self.buffer.lines.get(current_row.saturating_add(top)) {
-                let left = self.scroll_offset.col;
-                let right = self.scroll_offset.col.saturating_add(width);
-                Self::render_line(current_row, &line.get_visible_graphemes(left..right));
-            } else if current_row == vertical_center && self.buffer.is_empty() {
-                Self::render_line(current_row, &Self::build_welcome_message(width));
-            } else {
-                let draw_symbol = Self::draw_symbol_fn();
-                Self::render_line(current_row, draw_symbol);
-            } //filler symbol for no content on line  
-        }
-        self.needs_redraw = false;
+    if !self.needs_redraw || self.size.height == 0 {
+        return;
     }
+    let Size { height, width } = self.size;
+    if height == 0 || width == 0 {
+        return;
+    }
+
+    #[allow(clippy::integer_division)]
+    let vertical_center = height / 3; // same as hecto
+    let top = self.scroll_offset.row;
+
+    for current_row in 0..height {
+        if let Some(line) = self.buffer.lines.get(current_row.saturating_add(top)) {
+            let left = self.scroll_offset.col;
+            let right = self.scroll_offset.col.saturating_add(width);
+            Self::render_line(current_row, &line.get_visible_graphemes(left..right));
+        } else if current_row == vertical_center && self.buffer.is_empty() {
+            Self::render_line(current_row, &Self::build_welcome_message(width));
+        } else {
+            let draw_symbol = Self::draw_symbol_fn();
+            Self::render_line(current_row, draw_symbol); //custom draw_symbol
+        }
+    }
+    self.needs_redraw = false;
+}
 
      fn render_line(at: usize, line_text: &str) {
         let result = Terminal::print_row(at, line_text);
@@ -181,7 +178,7 @@ impl View {
         let len = welcome_message.len();
         let remaining_width = width.saturating_sub(1);
 
-        if remaining_width <= len {
+        if remaining_width < len {
             
             return draw_symbol;
         }
@@ -193,12 +190,12 @@ impl View {
 
     fn scroll_vertically(&mut self, to: usize) {
         let Size { height, .. } = self.size;
-        let visible_height = self.size.height.saturating_sub(2);
+        
         let offset_changed = if to < self.scroll_offset.row {
             self.scroll_offset.row = to;
             true
-        } else if to >= self.scroll_offset.row.saturating_add(visible_height) {
-            self.scroll_offset.row = to.saturating_sub(visible_height).saturating_add(1);
+        } else if to >= self.scroll_offset.row.saturating_add(height) {
+            self.scroll_offset.row = to.saturating_sub(height).saturating_add(1);
             true
         } else {
             false
@@ -209,20 +206,20 @@ impl View {
     }
 
     fn scroll_horizontally(&mut self, to: usize) {
-        let Size { width, .. } = self.size;
-        let offset_changed = if to < self.scroll_offset.col {
-            self.scroll_offset.col = to;
-            true
-        } else if to >= self.scroll_offset.col.saturating_add(width) {
-            self.scroll_offset.col = to.saturating_sub(width).saturating_add(1);
-            true
-        } else {
-            false
-        };
-        if offset_changed{
-            self.needs_redraw=true;
-        }
+    let Size { width, .. } = self.size;
+    let offset_changed = if to < self.scroll_offset.col {
+        self.scroll_offset.col = to;
+        true
+    } else if to >= self.scroll_offset.col.saturating_add(width) {
+        self.scroll_offset.col = to.saturating_sub(width).saturating_add(1);
+        true
+    } else {
+        false
+    };
+    if offset_changed {
+        self.needs_redraw = true;
     }
+}
 
     fn scroll_text_location_into_view(&mut self) {
         let Position { row, col } = self.text_location_to_position();
@@ -323,7 +320,7 @@ impl View {
     // Doesn't trigger scrolling.
 
     fn snap_to_valid_line(&mut self){
-        let last_idx = self.buffer.height().saturating_sub(2);
+        let last_idx = self.buffer.height();
         self.text_location.line_index = min(self.text_location.line_index, last_idx);
     }
     //end region

@@ -39,7 +39,7 @@ impl Editor {
         let mut editor = Self {
             should_quit: false,
             view: View::new(2),
-            status_bar: StatusBar::new(2),
+            status_bar: StatusBar::new(1),
             title: String::new(),
         }; // fill editor with default values, Issue: note that initially title is empty string
 
