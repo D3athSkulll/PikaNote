@@ -1,17 +1,14 @@
+use std::cmp::min;
+use self::line::Line;
 use super::{
     editorcommand::{Direction, EditorCommand},
     terminal::{Position, Size, Terminal},
     DocumentStatus,NAME,VERSION
 };
-use std::cmp::min;
-
-
-use self::line::Line;
 
 mod buffer;
 mod line;
 use buffer::Buffer;
-
 
 #[derive(Clone, Copy, Default)]
 pub struct Location {
@@ -60,7 +57,8 @@ impl View {
             self.needs_redraw = true;
         }
     }
-     fn save(&mut self) {
+    
+    fn save(&mut self) {
         let _ = self.buffer.save();
      }// saving modifies buffer by resetting dirty flag
     
@@ -92,32 +90,7 @@ impl View {
     
 
     //region : Text editing\
-    fn insert_char(&mut self, character: char){
-        let old_len= self
-            .buffer
-            .lines
-            .get(self.text_location.line_index)
-            .map_or(0,Line::grapheme_count);//get current grapheme width and set to 0 if no line present
-
-        self.buffer.insert_char(character,self.text_location);
-
-        let new_len = self
-            .buffer
-            .lines
-            .get(self.text_location.line_index)
-            .map_or(0,Line::grapheme_count);//do same thing again
-        let grapheme_delta = new_len.saturating_sub(old_len);
-
-        
-        if grapheme_delta>0{
-            //move right for added grapheme
-            self.move_text_location(Direction::Right);
-        }
-        self.needs_redraw=true;
-    }
-    //issue tab is still detected as one blank space fix here and in line.rs
-
-    fn insert_newline(&mut self){
+     fn insert_newline(&mut self){
         self.buffer.insert_newline(self.text_location);
         self.move_text_location(Direction::Right);
         self.needs_redraw=true;
@@ -133,6 +106,32 @@ impl View {
        self.buffer.delete(self.text_location);
        self.needs_redraw=true;     
     }
+
+    fn insert_char(&mut self, character: char){
+        let old_len= self
+            .buffer
+            .lines
+            .get(self.text_location.line_index)
+            .map_or(0,Line::grapheme_count);//get current grapheme width and set to 0 if no line present
+
+        self.buffer.insert_char(character,self.text_location);
+
+        let new_len = self
+            .buffer
+            .lines
+            .get(self.text_location.line_index)
+            .map_or(0,Line::grapheme_count);//do same thing again
+       
+        let grapheme_delta = new_len.saturating_sub(old_len); 
+        if grapheme_delta>0{
+            //move right for added grapheme
+            self.move_text_location(Direction::Right);
+        }
+        self.needs_redraw=true;
+    }
+    //issue tab is still detected as one blank space fix here and in line.rs
+
+   
     //endregion
 
 
@@ -175,16 +174,16 @@ impl View {
         if width == 0 {
             return String::new();
         }
-        let draw_symbol = Self::draw_symbol_fn();
+        let draw_symbol = Self::draw_symbol_fn().to_string();
         let welcome_message = format!("{NAME} editor -- version {VERSION}");
         let len = welcome_message.len();
         let remaining_width = width.saturating_sub(1);
 
         if remaining_width <= len {
             
-            return draw_symbol.to_string();
+            return draw_symbol;
         }
-       format!("{:<1}{:^remaining_width$}", {draw_symbol.to_string()}, welcome_message)
+       format!("{:<1}{:^remaining_width$}", {draw_symbol}, welcome_message)
     }
 
     // end region
@@ -243,6 +242,7 @@ impl View {
         Position { col, row }
     }
     //end region
+
     // region: text location movement
 
     fn move_text_location(&mut self, direction: Direction) {

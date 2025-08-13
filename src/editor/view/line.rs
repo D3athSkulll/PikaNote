@@ -1,6 +1,6 @@
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
-use std::{ fmt::{self},ops::Range};
+use std::{ fmt,ops::Range};
 
 #[derive(Clone, Copy)]
 enum GraphemeWidth{
@@ -37,10 +37,12 @@ impl Line{
     }
 
     fn str_to_fragments(line_str: &str) -> Vec<TextFragment> {
-        line_str.graphemes(true)//turn string to grapheme
+        line_str
+            .graphemes(true)//turn string to grapheme
             .map(|grapheme|{
                 let (replacement, rendered_width)=Self::replacement_character(grapheme)
-                    .map_or_else(||{
+                    .map_or_else(
+                        ||{
                         let unicode_width=grapheme.width();
                         let rendered_width = match unicode_width{
                             0|1=>GraphemeWidth::Half,
@@ -57,10 +59,7 @@ impl Line{
                     replacement,
                 } // construct a text fragment
             })
-            .collect()
-        
-       
-        
+            .collect()   
     }
 
     fn replacement_character(for_str: &str)-> Option<char>{
@@ -99,28 +98,18 @@ impl Line{
             break;
         }
 
-        // Fully before visible range → skip
-        if fragment_end <= range.start {
+        if fragment_end > range.start {
+                if fragment_end > range.end || current_pos < range.start {
+                    // Clip on the right or left
+                    result.push('⋯');
+                } else if let Some(char) = fragment.replacement {
+                    result.push(char);
+                } else {
+                    result.push_str(&fragment.grapheme);
+                }
+            }
             current_pos = fragment_end;
-            continue;
         }
-
-        // Partially visible → show ellipsis
-        if fragment_end > range.end || current_pos < range.start {
-            result.push('⋯');
-        }
-        // Fully visible with replacement char
-        else if let Some(char) = fragment.replacement {
-            result.push(char);
-        }
-        // Fully visible, normal grapheme
-        else {
-            result.push_str(&fragment.grapheme);
-        }
-
-        current_pos = fragment_end;
-    }
-
     result
 }
 
@@ -148,34 +137,30 @@ impl Line{
                 result.push(character)
             }//if at place of insertion, push character to result string
             result.push_str(&fragment.grapheme);
-            if at >= self.fragments.len(){
-                result.push(character);
-            }//ensuring to push character even at end of line
-           
-        }
+            }
+        if at >= self.fragments.len(){
+            result.push(character);
+        }//ensuring to push character even at end of line
+
          self.fragments = Self::str_to_fragments(&result);// rebuild the structure
     }
 
     pub fn delete(&mut self, at: usize){
         let mut result = String::new();
+
         for (index,fragment) in self.fragments.iter().enumerate(){
             if index != at{
                 result.push_str(&fragment.grapheme);
 
-            }
-            
-            
+            }    
         }
         self.fragments=Self::str_to_fragments(&result);
     }
-
-
 
     pub fn append(&mut self, other: &Self){
         let mut concat = self.to_string();
         concat.push_str(&other.to_string());
         self.fragments=Self::str_to_fragments(&concat);
-
     }
 
     pub fn split(&mut self,at: usize)->Self{

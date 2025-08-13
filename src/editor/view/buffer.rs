@@ -1,10 +1,12 @@
 use std::io::Error;
-use std::fs::{read_to_string,File};
-use super::line::Line;
-use super::Location;
 use std::io::Write;
+use std::fs::{read_to_string,File};
+
+
 use  crate::editor::fileinfo::FileInfo;
 
+use super::line::Line;
+use super::Location;
 
 #[derive(Default)]
 pub struct Buffer {
@@ -29,10 +31,10 @@ impl Buffer {
         }) 
     }
     pub fn save(&mut self)->Result<(),Error>{
-        if let Some(file_name)= &self.file_info.path{
-            let mut file = File::create(file_name)?;
+        if let Some(path)= &self.file_info.path{
+            let mut file = File::create(path)?;
             for line in &self.lines{
-                writeln!(file,"{line}");
+                writeln!(file,"{line}")?;
             }
             self.dirty=false;
         }

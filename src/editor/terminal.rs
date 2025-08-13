@@ -23,6 +23,7 @@ impl Position{
         Self { col: self.col.saturating_sub(other.col), row: self.row.saturating_sub(other.row) }
     }
 }
+//Represent Terminal
 pub struct Terminal;
 
 impl Terminal {
@@ -39,7 +40,6 @@ impl Terminal {
         Self::enter_alternate_screen()?;
         Self::disable_line_wrap()?;
         Self::clear_screen()?;
-
         Self::execute()?;
         Ok(())
     }
@@ -99,7 +99,7 @@ impl Terminal {
         Self::print_row(
             row,
             &format!(
-                 "{}{:width$.width$}{}",
+                "{}{:width$.width$}{}",
                 Attribute::Reverse,
                 line_text,
                 Attribute::Reset

@@ -100,24 +100,19 @@ impl Editor {
                         self.status_bar.resize(size);
                 } // if the terminal is resized the status bar should also be resized
             }
-        } else {
-            #[cfg(debug_assertions)]
-            {
-                panic!("Recieved and discarded unsupported  or non-press event.");
-            }
         }
     }
 }
 
-    fn refresh_screen(&mut self) -> Result<(), Error> {
-        let _ = Terminal::hide_caret()?;
+    fn refresh_screen(&mut self) {
+        let _ = Terminal::hide_caret();
         self.view.render(); // draws the file/buffer/render text
         self.status_bar.render(); //draws the status bar
         let _ = Terminal::move_caret_to(self.view.caret_position());
 
-        let _ = Terminal::show_caret()?;
-        let _ = Terminal::execute()?; // flushes commands
-        Ok(())
+        let _ = Terminal::show_caret();
+        let _ = Terminal::execute(); // flushes commands
+       
     }
 }
 
