@@ -4,7 +4,6 @@ use std::convert::TryFrom;
 use super::terminal::Size;
 #[derive(Clone, Copy)]
 
-
 pub enum Direction {
     PageUp,
     PageDown,
@@ -20,7 +19,7 @@ pub enum EditorCommand {
     Move(Direction),
     Resize(Size),
     Quit,
-    Insert(char ),
+    Insert(char),
     Backspace,
     Delete,
     Enter,
@@ -38,9 +37,9 @@ impl TryFrom<Event> for EditorCommand {
                 (KeyCode::Char('s'), KeyModifiers::CONTROL) => Ok(Self::Save),
                 (KeyCode::Char(character), KeyModifiers::NONE | KeyModifiers::SHIFT) => {
                     Ok(Self::Insert(character))
-                },
-                (KeyCode::Tab,_)=>Ok(Self::Insert('\t')),
-                (KeyCode::Enter,_)=>Ok(Self::Enter),
+                }
+                (KeyCode::Tab, _) => Ok(Self::Insert('\t')),
+                (KeyCode::Enter, _) => Ok(Self::Enter),
                 (KeyCode::Backspace, _) => Ok(Self::Backspace),
                 (KeyCode::Delete, _) => Ok(Self::Delete),
                 (KeyCode::Up, _) => Ok(Self::Move(Direction::Up)),
@@ -54,10 +53,10 @@ impl TryFrom<Event> for EditorCommand {
                 _ => Err(format!("Key Code not supported : {code:?}")),
             },
 
-             Event::Resize(width_u16, height_u16) => Ok(Self::Resize(Size {
+            Event::Resize(width_u16, height_u16) => Ok(Self::Resize(Size {
                 height: height_u16 as usize,
                 width: width_u16 as usize,
-            })),    
+            })),
             _ => Err(format!("Event not supported : {event:?}")),
         }
     }

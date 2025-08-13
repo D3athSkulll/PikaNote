@@ -1,8 +1,8 @@
 use crossterm::cursor::{Hide, MoveTo, Show};
-use crossterm::style::{Attribute,Print};
+use crossterm::style::{Attribute, Print};
 use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, size, Clear, ClearType, EnterAlternateScreen,
-    LeaveAlternateScreen,DisableLineWrap,EnableLineWrap, SetTitle
+    disable_raw_mode, enable_raw_mode, size, Clear, ClearType, DisableLineWrap, EnableLineWrap,
+    EnterAlternateScreen, LeaveAlternateScreen, SetTitle,
 };
 use crossterm::{queue, Command};
 use std::io::{stdout, Error, Write};
@@ -12,15 +12,18 @@ pub struct Size {
     pub height: usize,
     pub width: usize,
 }
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Eq, PartialEq)]
 pub struct Position {
     pub col: usize,
     pub row: usize,
 }
 
-impl Position{
-    pub const fn saturating_sub(self,other: Self)->Self{
-        Self { col: self.col.saturating_sub(other.col), row: self.row.saturating_sub(other.row) }
+impl Position {
+    pub const fn saturating_sub(self, other: Self) -> Self {
+        Self {
+            col: self.col.saturating_sub(other.col),
+            row: self.row.saturating_sub(other.row),
+        }
     }
 }
 //Represent Terminal
@@ -94,7 +97,7 @@ impl Terminal {
         Self::print(line_text)?;
         Ok(())
     }
-    pub fn print_inverted_row(row: usize, line_text: &str)-> Result<(),Error>{
+    pub fn print_inverted_row(row: usize, line_text: &str) -> Result<(), Error> {
         let width = Self::size()?.width;
         Self::print_row(
             row,
@@ -105,7 +108,7 @@ impl Terminal {
                 Attribute::Reset
             ),
         )
-    }// print out reverse to start reversing color, print out line text ensuring padding and truncation and then print reset to stop colors.
+    } // print out reverse to start reversing color, print out line text ensuring padding and truncation and then print reset to stop colors.
     pub fn size() -> Result<Size, Error> {
         let (width_u16, height_u16) = size()?;
         #[allow(clippy::as_conversions)]

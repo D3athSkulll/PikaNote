@@ -1,10 +1,11 @@
-use std::cmp::min;
 use self::line::Line;
 use super::{
     editorcommand::{Direction, EditorCommand},
     terminal::{Position, Size, Terminal},
-    DocumentStatus,NAME,VERSION
+    uicomponent::UIComponent,
+    DocumentStatus, NAME, VERSION,
 };
+use std::{cmp::min, io::Error};
 
 mod buffer;
 mod line;
@@ -15,159 +16,106 @@ pub struct Location {
     pub grapheme_index: usize,
     pub line_index: usize,
 }
-
+#[derive(Default)]
 pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
+    // The view always starts at `(0/0)`. The `size` property determines the visible area.
     size: Size,
-    margin_bottom: usize, // for rendering after resizing keep track of this too
+
     text_location: Location,
     scroll_offset: Position,
 }
 
 impl View {
-    pub fn new(margin_bottom: usize)-> Self{
-        let terminal_size = Terminal::size().unwrap_or_default();
-        Self{
-            buffer: Buffer::default(),
-            needs_redraw: true,
-            size: Size {
-                    height: terminal_size.height.saturating_sub(margin_bottom),
-                    width: terminal_size.width 
-            },
-            margin_bottom,
-            text_location: Location::default(),
-            scroll_offset: Position::default(),
-        }
-    }
+    //no need of new method as editor can create it from outside and configure as needed
 
-    pub fn get_status(&self)-> DocumentStatus{
+    pub fn get_status(&self) -> DocumentStatus {
         DocumentStatus {
             total_lines: self.buffer.height(),
             current_line_index: self.text_location.line_index,
             file_name: format!("{}", self.buffer.file_info), // use of debug trait for file info
-            is_modified: self.buffer.dirty, 
+            is_modified: self.buffer.dirty,
         }
     }
 
-     //region:File io
+    //region:File io
     pub fn load(&mut self, file_name: &str) {
         if let Ok(buffer) = Buffer::load(file_name) {
             self.buffer = buffer;
-            self.needs_redraw = true;
+            self.mark_redraw(true);
         }
     }
-    
+
     fn save(&mut self) {
         let _ = self.buffer.save();
-     }// saving modifies buffer by resetting dirty flag
-    
+    } // saving modifies buffer by resetting dirty flag
+
     //end region
     // region: CommandHandling
     pub fn handle_command(&mut self, command: EditorCommand) {
         match command {
-            EditorCommand::Resize(size) => self.resize(size),
+            EditorCommand::Resize(_) | EditorCommand::Quit => {} // since resize is handled by editor, ignore quit and resize event
             EditorCommand::Move(direction) => self.move_text_location(direction),
-            EditorCommand::Quit => {},
+
             EditorCommand::Insert(character) => self.insert_char(character),
             EditorCommand::Delete => self.delete(),
             EditorCommand::Backspace => self.delete_backward(),
             EditorCommand::Enter => self.insert_newline(),
-            EditorCommand::Save=>self.save(),
-            
+            EditorCommand::Save => self.save(),
         }
     }
-    fn resize(&mut self, to: Size) {
-        self.size = Size {
-            width: to.width,
-            height: to.height.saturating_sub(self.margin_bottom),
-        };//resizing and taking margin into bottom account
-        self.scroll_text_location_into_view();
-        self.needs_redraw = true;
-    }
+
     //endregion
-   
-    
 
     //region : Text editing\
-     fn insert_newline(&mut self){
+    fn insert_newline(&mut self) {
         self.buffer.insert_newline(self.text_location);
         self.move_text_location(Direction::Right);
-        self.needs_redraw=true;
+        self.mark_redraw(true);
     }
 
-    fn delete_backward(&mut self){
-         if self.text_location.line_index != 0 || self.text_location.grapheme_index != 0 {
+    fn delete_backward(&mut self) {
+        if self.text_location.line_index != 0 || self.text_location.grapheme_index != 0 {
             self.move_text_location(Direction::Left);
             self.delete();
         }
     }
-    fn delete(&mut self){
-       self.buffer.delete(self.text_location);
-       self.needs_redraw=true;     
+    fn delete(&mut self) {
+        self.buffer.delete(self.text_location);
+        self.mark_redraw(true);
     }
 
-    fn insert_char(&mut self, character: char){
-        let old_len= self
+    fn insert_char(&mut self, character: char) {
+        let old_len = self
             .buffer
             .lines
             .get(self.text_location.line_index)
-            .map_or(0,Line::grapheme_count);//get current grapheme width and set to 0 if no line present
+            .map_or(0, Line::grapheme_count); //get current grapheme width and set to 0 if no line present
 
-        self.buffer.insert_char(character,self.text_location);
+        self.buffer.insert_char(character, self.text_location);
 
         let new_len = self
             .buffer
             .lines
             .get(self.text_location.line_index)
-            .map_or(0,Line::grapheme_count);//do same thing again
-       
-        let grapheme_delta = new_len.saturating_sub(old_len); 
-        if grapheme_delta>0{
+            .map_or(0, Line::grapheme_count); //do same thing again
+
+        let grapheme_delta = new_len.saturating_sub(old_len);
+        if grapheme_delta > 0 {
             //move right for added grapheme
             self.move_text_location(Direction::Right);
         }
-        self.needs_redraw=true;
+        self.mark_redraw(true);
     }
     //issue tab is still detected as one blank space fix here and in line.rs
 
-   
     //endregion
-
 
     // region: Rendering
 
-    pub fn render(&mut self) {
-    if !self.needs_redraw || self.size.height == 0 {
-        return;
-    }
-    let Size { height, width } = self.size;
-    if height == 0 || width == 0 {
-        return;
-    }
-
-    #[allow(clippy::integer_division)]
-    let vertical_center = height / 3; // same as hecto
-    let top = self.scroll_offset.row;
-
-    for current_row in 0..height {
-        if let Some(line) = self.buffer.lines.get(current_row.saturating_add(top)) {
-            let left = self.scroll_offset.col;
-            let right = self.scroll_offset.col.saturating_add(width);
-            Self::render_line(current_row, &line.get_visible_graphemes(left..right));
-        } else if current_row == vertical_center && self.buffer.is_empty() {
-            Self::render_line(current_row, &Self::build_welcome_message(width));
-        } else {
-            let draw_symbol = Self::draw_symbol_fn();
-            Self::render_line(current_row, draw_symbol); //custom draw_symbol
-        }
-    }
-    self.needs_redraw = false;
-}
-
-     fn render_line(at: usize, line_text: &str) {
-        let result = Terminal::print_row(at, line_text);
-        debug_assert!(result.is_ok(), "Failed to render line");
+    fn render_line(at: usize, line_text: &str) -> Result<(), Error> {
+        Terminal::print_row(at, line_text)
     }
     fn build_welcome_message(width: usize) -> String {
         if width == 0 {
@@ -179,10 +127,13 @@ impl View {
         let remaining_width = width.saturating_sub(1);
 
         if remaining_width < len {
-            
             return draw_symbol;
         }
-       format!("{:<1}{:^remaining_width$}", {draw_symbol}, welcome_message)
+        format!(
+            "{:<1}{:^remaining_width$}",
+            { draw_symbol },
+            welcome_message
+        )
     }
 
     // end region
@@ -190,7 +141,7 @@ impl View {
 
     fn scroll_vertically(&mut self, to: usize) {
         let Size { height, .. } = self.size;
-        
+
         let offset_changed = if to < self.scroll_offset.row {
             self.scroll_offset.row = to;
             true
@@ -200,26 +151,26 @@ impl View {
         } else {
             false
         };
-        if offset_changed{
-            self.needs_redraw=true;
+        if offset_changed {
+            self.mark_redraw(true);
         }
     }
 
     fn scroll_horizontally(&mut self, to: usize) {
-    let Size { width, .. } = self.size;
-    let offset_changed = if to < self.scroll_offset.col {
-        self.scroll_offset.col = to;
-        true
-    } else if to >= self.scroll_offset.col.saturating_add(width) {
-        self.scroll_offset.col = to.saturating_sub(width).saturating_add(1);
-        true
-    } else {
-        false
-    };
-    if offset_changed {
-        self.needs_redraw = true;
+        let Size { width, .. } = self.size;
+        let offset_changed = if to < self.scroll_offset.col {
+            self.scroll_offset.col = to;
+            true
+        } else if to >= self.scroll_offset.col.saturating_add(width) {
+            self.scroll_offset.col = to.saturating_sub(width).saturating_add(1);
+            true
+        } else {
+            false
+        };
+        if offset_changed {
+            self.mark_redraw(true);
+        }
     }
-}
 
     fn scroll_text_location_into_view(&mut self) {
         let Position { row, col } = self.text_location_to_position();
@@ -230,22 +181,22 @@ impl View {
     // region: Location and position handling
 
     pub fn caret_position(&self) -> Position {
-       let row = self.text_location.line_index;
-    let col = if let Some(line) = self.buffer.lines.get(row) {
-        let gi = self.text_location.grapheme_index;
-        let last = line.grapheme_count();
+        let row = self.text_location.line_index;
+        let col = if let Some(line) = self.buffer.lines.get(row) {
+            let gi = self.text_location.grapheme_index;
+            let last = line.grapheme_count();
 
-        if gi > 0 && gi == last {
-            // End-of-line: place caret ON the last grapheme
-            line.width_until(last - 1)
+            if gi > 0 && gi == last {
+                // End-of-line: place caret ON the last grapheme
+                line.width_until(last - 1)
+            } else {
+                line.width_until(gi)
+            }
         } else {
-            line.width_until(gi)
-        }
-    } else {
-        0
-    };
+            0
+        };
 
-    Position { row, col }.saturating_sub(self.scroll_offset)
+        Position { row, col }.saturating_sub(self.scroll_offset)
     }
 
     pub fn text_location_to_position(&self) -> Position {
@@ -297,8 +248,8 @@ impl View {
         } else {
             self.move_to_start_of_line();
             self.move_down(1);
+        }
     }
-}
     fn move_left(&mut self) {
         if self.text_location.grapheme_index > 0 {
             self.text_location.grapheme_index = self.text_location.grapheme_index - 1;
@@ -310,7 +261,7 @@ impl View {
     fn move_to_start_of_line(&mut self) {
         self.text_location.grapheme_index = 0;
     }
-     fn move_to_end_of_line(&mut self) {
+    fn move_to_end_of_line(&mut self) {
         self.text_location.grapheme_index = self
             .buffer
             .lines
@@ -320,8 +271,8 @@ impl View {
 
     // Ensures self.location.grapheme_index points to a valid grapheme index by snapping it to the left most grapheme if appropriate.
     // Doesn't trigger scrolling.
-    fn snap_to_valid_grapheme(&mut self){
-        self.text_location.grapheme_index =  self
+    fn snap_to_valid_grapheme(&mut self) {
+        self.text_location.grapheme_index = self
             .buffer
             .lines
             .get(self.text_location.line_index)
@@ -333,17 +284,55 @@ impl View {
     // Ensures self.location.line_index points to a valid line index by snapping it to the bottom most line if appropriate.
     // Doesn't trigger scrolling.
 
-    fn snap_to_valid_line(&mut self){
+    fn snap_to_valid_line(&mut self) {
         let last_idx = self.buffer.height();
         self.text_location.line_index = min(self.text_location.line_index, last_idx);
     }
     //end region
-    
 
     fn draw_symbol_fn() -> &'static str {
         "⚡"
     }
 }
 
+impl UIComponent for View {
+    fn mark_redraw(&mut self, value: bool) {
+        self.needs_redraw = value;
+    }
+    fn needs_redraw(&self) -> bool {
+        self.needs_redraw
+    }
 
+    fn set_size(&mut self, size: Size) {
+        self.size = size;
+        self.scroll_text_location_into_view();
+    }
 
+    fn draw(&mut self, origin_y: usize) -> Result<(), Error> {
+        let Size { height, width } = self.size;
+        let end_y = origin_y.saturating_add(height);
+        //allow this as we dont care welcome msg is put in perfect posn
+
+        #[allow(clippy::integer_division)]
+        let vertical_center = 2 * height / 3;
+        let scroll_top = self.scroll_offset.row;
+        for current_row in origin_y..end_y {
+            //line_idx , take current(abs) row, subtract origin_y for row relative to view and add to scroll.offset
+
+            let line_idx = current_row
+                .saturating_sub(origin_y)
+                .saturating_add(scroll_top);
+            if let Some(line) = self.buffer.lines.get(line_idx) {
+                let left = self.scroll_offset.col;
+                let right = self.scroll_offset.col.saturating_add(width);
+                Self::render_line(current_row, &line.get_visible_graphemes(left..right))?;
+            } else if current_row == vertical_center && self.buffer.is_empty() {
+                Self::render_line(current_row, &Self::build_welcome_message(width))?;
+            } else {
+                let draw_symbol = Self::draw_symbol_fn();
+                Self::render_line(current_row, draw_symbol)?;
+            }
+        }
+        Ok(())
+    }
+}

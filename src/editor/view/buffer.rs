@@ -1,9 +1,8 @@
+use std::fs::{read_to_string, File};
 use std::io::Error;
 use std::io::Write;
-use std::fs::{read_to_string,File};
 
-
-use  crate::editor::fileinfo::FileInfo;
+use crate::editor::fileinfo::FileInfo;
 
 use super::line::Line;
 use super::Location;
@@ -12,7 +11,7 @@ use super::Location;
 pub struct Buffer {
     pub lines: Vec<Line>,
     pub dirty: bool,
-    pub file_info : FileInfo,
+    pub file_info: FileInfo,
 }
 
 impl Buffer {
@@ -27,69 +26,69 @@ impl Buffer {
         Ok(Self {
             lines,
             file_info: FileInfo::from(file_name),
-            dirty: false
-        }) 
+            dirty: false,
+        })
     }
-    pub fn save(&mut self)->Result<(),Error>{
-        if let Some(path)= &self.file_info.path{
+    pub fn save(&mut self) -> Result<(), Error> {
+        if let Some(path) = &self.file_info.path {
             let mut file = File::create(path)?;
-            for line in &self.lines{
-                writeln!(file,"{line}")?;
+            for line in &self.lines {
+                writeln!(file, "{line}")?;
             }
-            self.dirty=false;
+            self.dirty = false;
         }
 
         Ok(())
     }
-    pub fn is_empty(&self) -> bool{
+    pub fn is_empty(&self) -> bool {
         self.lines.is_empty()
     }
-     pub fn height(&self) -> usize {
+    pub fn height(&self) -> usize {
         self.lines.len()
     }
 
-    pub fn insert_char(&mut self, character:char, at:Location){
-        if at.line_index > self.height(){
+    pub fn insert_char(&mut self, character: char, at: Location) {
+        if at.line_index > self.height() {
             return;
-        }// dont insert anything more than one line below doc
-        if at.line_index ==self.height(){
+        } // dont insert anything more than one line below doc
+        if at.line_index == self.height() {
             self.lines.push(Line::from(&character.to_string()));
-            self.dirty=true;
-        }// add new line at edge of document
-        else if let Some(line) = self.lines.get_mut(at.line_index){
+            self.dirty = true;
+        }
+        // add new line at edge of document
+        else if let Some(line) = self.lines.get_mut(at.line_index) {
             line.insert_char(character, at.grapheme_index);
-            self.dirty=true;
-        }// if in document middle let line handle the insertion
+            self.dirty = true;
+        } // if in document middle let line handle the insertion
     }
-    pub fn delete(&mut self, at: Location){
-        if let Some(line) = self.lines.get(at.line_index){
-            if at.grapheme_index>= line.grapheme_count()
+    pub fn delete(&mut self, at: Location) {
+        if let Some(line) = self.lines.get(at.line_index) {
+            if at.grapheme_index >= line.grapheme_count()
                 && self.height() > at.line_index.saturating_add(1)
-                {// checking if we are at end of current line and next line exists
-                    let next_line = self.lines.remove(at.line_index.saturating_add(1));
-                    #[allow(clippy::indexing_slicing)]
-                    self.lines[at.line_index].append(&next_line);
-                    self.dirty=true;
-                
-                }else if at.grapheme_index < line.grapheme_count(){
-                    #[allow(clippy::indexing_slicing)]
-                    self.lines[at.line_index].delete(at.grapheme_index);
-                    self.dirty=true;
-                }
+            {
+                // checking if we are at end of current line and next line exists
+                let next_line = self.lines.remove(at.line_index.saturating_add(1));
+                #[allow(clippy::indexing_slicing)]
+                self.lines[at.line_index].append(&next_line);
+                self.dirty = true;
+            } else if at.grapheme_index < line.grapheme_count() {
+                #[allow(clippy::indexing_slicing)]
+                self.lines[at.line_index].delete(at.grapheme_index);
+                self.dirty = true;
+            }
         }
     }
 
-    pub fn insert_newline(&mut self, at: Location){
-        if at.line_index==self.height(){
+    pub fn insert_newline(&mut self, at: Location) {
+        if at.line_index == self.height() {
             self.lines.push(Line::default());
-            self.dirty=true;
-        }//if at end of doc insert new line
-
-        else if let Some(line) =self.lines.get_mut(at.line_index){
+            self.dirty = true;
+        }
+        //if at end of doc insert new line
+        else if let Some(line) = self.lines.get_mut(at.line_index) {
             let new = line.split(at.grapheme_index);
-            self.lines.insert(at.line_index.saturating_add(1),new);
-            self.dirty=true;
-        }//if in mid of doc, split current line and add splitted to self.lines at proper index
-
+            self.lines.insert(at.line_index.saturating_add(1), new);
+            self.dirty = true;
+        } //if in mid of doc, split current line and add splitted to self.lines at proper index
     }
 }

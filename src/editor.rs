@@ -8,23 +8,30 @@ use std::{
 mod documentstatus;
 mod editorcommand;
 mod fileinfo;
+mod messagebar;
 mod statusbar;
 mod terminal;
+mod uicomponent;
 mod view;
+use self::{messagebar::MessageBar, terminal::Size};
 use documentstatus::DocumentStatus;
 use editorcommand::EditorCommand;
 use statusbar::StatusBar;
 use terminal::Terminal;
+use uicomponent::UIComponent;
 use view::View;
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+#[derive(Default)]
 pub struct Editor {
     should_quit: bool,
     view: View,
     status_bar: StatusBar,
     title: String,
+    message_bar: MessageBar,
+    terminal_size: Size,
 }
 
 impl Editor {
@@ -36,22 +43,38 @@ impl Editor {
         }));
         Terminal::initialize()?; // Setup terminal (alternate screen, raw mode)
 
-        let mut editor = Self {
-            should_quit: false,
-            view: View::new(2),
-            status_bar: StatusBar::new(1),
-            title: String::new(),
-        }; // fill editor with default values, Issue: note that initially title is empty string
+        let mut editor = Self::default();
+        let size = Terminal::size().unwrap_or_default();
+        editor.resize(size); // using default struct and calling resize on it to set up properly
 
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1) {
             editor.view.load(file_name); // Load file into buffer if filename given
         }
+        editor
+            .message_bar
+            .update_message("HELP: Ctrl+S = Save | Ctrl+Q = Quit".to_string());
         editor.refresh_status(); // ask to refresh status, this method is called in every rendering cycle too
         Ok(editor)
     }
 
-    pub fn refresh_status(&mut self) {
+    fn resize(&mut self, size: Size) {
+        self.terminal_size = size;
+        self.view.resize(Size {
+            height: size.height.saturating_sub(2),
+            width: size.width,
+        });
+        self.message_bar.resize(Size {
+            height: 1,
+            width: size.width,
+        });
+        self.status_bar.resize(Size {
+            height: 1,
+            width: size.width,
+        })
+    } // defining the sizes and height of the ui
+
+    fn refresh_status(&mut self) {
         let status = self.view.get_status();
         let title = format!("{} - {NAME}", status.file_name);
         self.status_bar.update_status(status);
@@ -90,29 +113,42 @@ impl Editor {
             Event::Resize(_, _) => true,
             _ => false,
         };
-         if should_process {
+        if should_process {
             if let Ok(command) = EditorCommand::try_from(event) {
                 if matches!(command, EditorCommand::Quit) {
                     self.should_quit = true;
-                } else {
+                }
+                if let EditorCommand::Resize(size) = command {
+                    self.status_bar.resize(size);
+                }
+                // if the terminal is resized the status bar should also be resized
+                else {
                     self.view.handle_command(command);
-                    if let EditorCommand::Resize(size) = command {
-                        self.status_bar.resize(size);
-                } // if the terminal is resized the status bar should also be resized
+                }
             }
         }
     }
-}
 
     fn refresh_screen(&mut self) {
+        if self.terminal_size.height == 0 || self.terminal_size.width == 0 {
+            return;
+        } //ensuring rendering is appropiate
         let _ = Terminal::hide_caret();
-        self.view.render(); // draws the file/buffer/render text
-        self.status_bar.render(); //draws the status bar
+        //start adding ui elements from bottom
+        self.message_bar
+            .render(self.terminal_size.height.saturating_sub(1));
+        if self.terminal_size.height > 1 {
+            self.status_bar
+                .render(self.terminal_size.height.saturating_sub(2));
+        } //if height is atleast 2 , render status bar too
+        if self.terminal_size.height > 2 {
+            self.view.render(0);
+        } //if height is greater than 2 , render view
+
         let _ = Terminal::move_caret_to(self.view.caret_position());
 
         let _ = Terminal::show_caret();
         let _ = Terminal::execute(); // flushes commands
-       
     }
 }
 
