@@ -5,17 +5,25 @@ use std::{
     panic::{set_hook, take_hook},
 };
 
+mod command;
 mod documentstatus;
-mod editorcommand;
+
 mod fileinfo;
 mod messagebar;
 mod statusbar;
 mod terminal;
 mod uicomponent;
 mod view;
-use self::{messagebar::MessageBar, terminal::Size};
+use self::{
+    command::{
+        Command::{self, Edit, Move, System},
+        System::{Quit, Resize, Save},
+    },
+    messagebar::MessageBar,
+    terminal::Size,
+};
 use documentstatus::DocumentStatus;
-use editorcommand::EditorCommand;
+
 use statusbar::StatusBar;
 use terminal::Terminal;
 use uicomponent::UIComponent;
@@ -23,6 +31,8 @@ use view::View;
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const QUIT_TIMES: u8 = 3; // hardcoding amt of times to press Ctrl+Q
 
 #[derive(Default)]
 pub struct Editor {
@@ -32,6 +42,7 @@ pub struct Editor {
     title: String,
     message_bar: MessageBar,
     terminal_size: Size,
+    quit_times: u8,
 }
 
 impl Editor {
@@ -47,13 +58,19 @@ impl Editor {
         let size = Terminal::size().unwrap_or_default();
         editor.resize(size); // using default struct and calling resize on it to set up properly
 
-        let args: Vec<String> = env::args().collect();
-        if let Some(file_name) = args.get(1) {
-            editor.view.load(file_name); // Load file into buffer if filename given
-        }
         editor
             .message_bar
-            .update_message("HELP: Ctrl+S = Save | Ctrl+Q = Quit".to_string());
+            .update_message(&"HELP: Ctrl+S = Save | Ctrl+Q = Quit".to_string());
+
+        let args: Vec<String> = env::args().collect();
+        if let Some(file_name) = args.get(1) {
+            if editor.view.load(file_name).is_err() {
+                editor
+                    .message_bar
+                    .update_message(&format!("ERR: Could not open file: {file_name}"));
+            } // Load file into buffer if filename given
+        }
+
         editor.refresh_status(); // ask to refresh status, this method is called in every rendering cycle too
         Ok(editor)
     }
@@ -106,7 +123,6 @@ impl Editor {
         }
     }
 
-    #[allow(clippy::needless_pass_by_value)]
     fn evaluate_event(&mut self, event: Event) {
         let should_process = match &event {
             Event::Key(KeyEvent { kind, .. }) => kind == &KeyEventKind::Press,
@@ -114,18 +130,53 @@ impl Editor {
             _ => false,
         };
         if should_process {
-            if let Ok(command) = EditorCommand::try_from(event) {
-                if matches!(command, EditorCommand::Quit) {
-                    self.should_quit = true;
-                }
-                if let EditorCommand::Resize(size) = command {
-                    self.status_bar.resize(size);
-                }
-                // if the terminal is resized the status bar should also be resized
-                else {
-                    self.view.handle_command(command);
-                }
+            if let Ok(command) = Command::try_from(event) {
+                self.process_command(command); // logic to work on a command is handled in othe fxn
             }
+        }
+    }
+    fn process_command(&mut self, command: Command) {
+        match (command) {
+            System(Quit) => self.handle_quit(),
+            System(Resize(size)) => self.resize(size),
+            _ => self.reset_quit_times(), //reset quit time for all other commands
+        } // this block is there to correctly handle multiple quit events, or reset quit times, also resizing terminal shouldnt reset quit counter
+    
+        match command{
+            System(Quit | Resize(_))=>{}, // handled above
+            System(Save)=> self.handle_save(),
+            Edit(edit_command)=> self.view.handle_edit_command(edit_command),
+            Move(move_command)=>self.view.handle_move_command(move_command),
+        }
+    }
+
+    fn handle_save(&mut self){
+        if self.view.save().is_ok(){
+            self.message_bar.update_message("File saved successfully.");
+        } else{
+            self.message_bar.update_message("Error writing file!");
+        }
+    }
+
+    #[allow(clippy::arithmetic_side_effects)]
+    fn handle_quit(&mut self){
+        if !self.view.get_status().is_modified || self.quit_times + 1 == QUIT_TIMES{
+            self.should_quit=true;
+        }else if self.view.get_status().is_modified{
+            //handle the case where view is modified and user wants to do more work 
+            self.message_bar.update_message(&format!(
+                "WARNING! File has unsaved changes. Press Ctrl+Q {} more times to quit. ",
+                QUIT_TIMES - self.quit_times -1 
+            ));
+            self.quit_times += 1;
+        }
+    }
+
+    fn reset_quit_times(&mut self){
+        if self.quit_times > 0 {
+            self.quit_times = 0;
+            self.message_bar.update_message("");
+            // if previously quit times was non zero, dispose the current message
         }
     }
 
