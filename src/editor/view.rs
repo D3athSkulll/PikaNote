@@ -1,15 +1,14 @@
-use self::line::Line;
+
 use super::{
     command::{Edit,Move},
-    terminal::{Position, Size, Terminal},
-    uicomponent::UIComponent,
-    DocumentStatus, NAME, VERSION,
+    DocumentStatus, Line, Position, Size, Terminal, UIComponent, NAME, VERSION,
 };
 use std::{cmp::min, io::Error};
 
 mod buffer;
-mod line;
 use buffer::Buffer;
+mod fileinfo;
+use fileinfo::FileInfo;
 
 #[derive(Clone, Copy, Default)]
 pub struct Location {
@@ -39,6 +38,10 @@ impl View {
         }
     }
 
+    pub const fn is_file_loaded(&self) -> bool {
+        self.buffer.is_file_loaded()
+    }// allows editor to determine whether or not to prompt for file_name
+
     //region:File io
     pub fn load(&mut self, file_name: &str)-> Result<(),Error> {
         let buffer = Buffer::load(file_name)?;
@@ -50,7 +53,11 @@ impl View {
 
     pub fn save(&mut self)-> Result<(),Error>  {
         self.buffer.save()
-    } // saving modifies buffer by resetting dirty flag
+    } 
+
+    pub fn save_as(&mut self, file_name: &str)-> Result<(),Error>{
+        self.buffer.save_as(file_name)
+    }//allows saving by file name
 
     //end region
     // region: CommandHandling
@@ -82,7 +89,7 @@ impl View {
     //region : Text editing\
     fn insert_newline(&mut self) {
         self.buffer.insert_newline(self.text_location);
-        self.handle_move_command(Move::Right);;
+        self.handle_move_command(Move::Right);
         self.set_needs_redraw(true);
     }
 
@@ -115,7 +122,7 @@ impl View {
         let grapheme_delta = new_len.saturating_sub(old_len);
         if grapheme_delta > 0 {
             //move right for added grapheme
-            self.handle_move_command(Move::Right);;
+            self.handle_move_command(Move::Right);
         }
         self.set_needs_redraw(true);
     }
@@ -304,19 +311,19 @@ impl UIComponent for View {
         self.scroll_text_location_into_view();
     }
 
-    fn draw(&mut self, origin_y: usize) -> Result<(), Error> {
+    fn draw(&mut self, origin_row: usize) -> Result<(), Error> {
         let Size { height, width } = self.size;
-        let end_y = origin_y.saturating_add(height);
+        let end_y = origin_row.saturating_add(height);
         //allow this as we dont care welcome msg is put in perfect posn
 
         #[allow(clippy::integer_division)]
         let vertical_center = 2 * height / 3;
         let scroll_top = self.scroll_offset.row;
-        for current_row in origin_y..end_y {
-            //line_idx , take current(abs) row, subtract origin_y for row relative to view and add to scroll.offset
+        for current_row in origin_row..end_y {
+            //line_idx , take current(abs) row, subtract origin_row for row relative to view and add to scroll.offset
 
             let line_idx = current_row
-                .saturating_sub(origin_y)
+                .saturating_sub(origin_row)
                 .saturating_add(scroll_top);
             if let Some(line) = self.buffer.lines.get(line_idx) {
                 let left = self.scroll_offset.col;

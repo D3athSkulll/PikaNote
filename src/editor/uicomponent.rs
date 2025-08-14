@@ -1,6 +1,6 @@
 use std::io::Error;
 
-use super::terminal::Size;
+use super::Size;
 
 pub trait UIComponent {
     // Marks this UI component as in need of redrawing (or not)
@@ -19,9 +19,9 @@ pub trait UIComponent {
     fn set_size(&mut self, size: Size);
     // method to update size, implement this too in respective component
 
-    fn render(&mut self, origin_y: usize) {
+    fn render(&mut self, origin_row: usize) {
         if self.needs_redraw() {
-            match self.draw(origin_y) {
+            match self.draw(origin_row) {
                 Ok(()) => self.set_needs_redraw(false),
                 Err(err) => {
                     #[cfg(debug_assertions)]
@@ -33,6 +33,6 @@ pub trait UIComponent {
         }
     } // method to draw this component if it is in need of redrawing
 
-    fn draw(&mut self, origin_y: usize) -> Result<(), Error>;
+    fn draw(&mut self, origin_row: usize) -> Result<(), Error>;
     // method to actually draw component, needs to be implemeneted in component
 } //new trait for view, messagebar, statusbar

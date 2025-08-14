@@ -6,28 +6,36 @@ use std::{
 };
 
 mod command;
+mod commandbar;
 mod documentstatus;
-
-mod fileinfo;
+mod line;
 mod messagebar;
+mod position;
+mod size;
 mod statusbar;
 mod terminal;
 mod uicomponent;
 mod view;
-use self::{
-    command::{
-        Command::{self, Edit, Move, System},
-        System::{Quit, Resize, Save},
-    },
-    messagebar::MessageBar,
-    terminal::Size,
-};
-use documentstatus::DocumentStatus;
 
+use commandbar::CommandBar;
+use documentstatus::DocumentStatus;
+use line::Line;
+use messagebar::MessageBar;
+use position::Position;
+use size::Size;
 use statusbar::StatusBar;
 use terminal::Terminal;
 use uicomponent::UIComponent;
 use view::View;
+
+use self::command::{
+    Command::{self, Edit, Move, System},
+    Edit::InsertNewLine,
+    System::{Dismiss, Quit, Resize, Save},
+
+
+
+};
 
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -41,6 +49,7 @@ pub struct Editor {
     status_bar: StatusBar,
     title: String,
     message_bar: MessageBar,
+    command_bar: Option<CommandBar>,
     terminal_size: Size,
     quit_times: u8,
 }
@@ -88,7 +97,13 @@ impl Editor {
         self.status_bar.resize(Size {
             height: 1,
             width: size.width,
-        })
+        });
+        if let Some(command_bar) = &mut self.command_bar{
+            command_bar.resize(Size{
+                height:1,
+                width: size.width,
+            });//if command bar is active it needs to resize
+        }
     } // defining the sizes and height of the ui
 
     fn refresh_status(&mut self) {
@@ -136,27 +151,91 @@ impl Editor {
         }
     }
     fn process_command(&mut self, command: Command) {
-        match (command) {
-            System(Quit) => self.handle_quit(),
+        match command {
+             System(Quit) => {
+                if self.command_bar.is_none() {
+                    self.handle_quit();
+                }
+            }//Only treat Quit when outside prompt
             System(Resize(size)) => self.resize(size),
             _ => self.reset_quit_times(), //reset quit time for all other commands
         } // this block is there to correctly handle multiple quit events, or reset quit times, also resizing terminal shouldnt reset quit counter
     
         match command{
             System(Quit | Resize(_))=>{}, // handled above
-            System(Save)=> self.handle_save(),
-            Edit(edit_command)=> self.view.handle_edit_command(edit_command),
-            Move(move_command)=>self.view.handle_move_command(move_command),
+            System(Save)=> {
+                if self.command_bar.is_none(){
+                    self.handle_save();
+                }// we save only when outside of a prompt
+            },
+            System(Dismiss)=>{
+                if self.command_bar.is_some(){
+                    self.dismiss_prompt();
+                    self.message_bar.update_message("Save aborted ");
+                }
+            },// Dismiss represents press on Esc, dismiss command bar for save aborted on Esc
+            Edit(edit_command)=>{
+                if let Some(command_bar) = &mut self.command_bar{
+                    if matches!(edit_command, InsertNewLine){
+                        let file_name = command_bar.value();
+                        self.dismiss_prompt();
+                        self.save(Some(&file_name));
+                    }// get entered file name and attempt to save it and dismiss the prompt
+                    else
+                    {
+                        command_bar.handle_edit_command(edit_command);
+                    }//if we have a edit command and command bar is active , then fwd edit command to it
+                }else{
+                    self.view.handle_edit_command(edit_command);
+                }//outside of command prompt, forward edit command to view
+            },
+            Move(move_command)=>{
+                if self.command_bar.is_none(){
+                    self.view.handle_move_command(move_command);
+                }//move command forwarded to view if command bar inactive
+            }
+
         }
     }
 
+    fn dismiss_prompt(&mut self){
+        self.command_bar= None;
+        self.message_bar.set_needs_redraw(true);
+    }// set command bar as none and make sure message bar redraws in next redraw cycle
+
+    fn show_prompt(&mut self){
+        let mut command_bar = CommandBar::default();
+        command_bar.set_prompt("Save as : ");
+        command_bar.resize(Size{
+            height:1,
+            width: self.terminal_size.width,
+        });
+        command_bar.set_needs_redraw(true);
+        self.command_bar=Some(command_bar);
+    }//showing prompt means create new command bar, set the text determinng what we prompt for , resize it to display it, set it to needs redraw
+
     fn handle_save(&mut self){
+        if self.view.is_file_loaded() {
+            self.save(None);
+        } else {
+            self.show_prompt();
+        }
+    }//calls save  or opens a prompt depending on status of file being loaded or not
+    fn save(&mut self, file_name: Option<&str>){
+        let result = if let Some(name) = file_name {
+            self.view.save_as(name)
+        } else {
+            self.view.save()
+        };
+        if result.is_ok() {
         if self.view.save().is_ok(){
             self.message_bar.update_message("File saved successfully.");
         } else{
             self.message_bar.update_message("Error writing file!");
         }
     }
+} 
+    
 
     #[allow(clippy::arithmetic_side_effects)]
     fn handle_quit(&mut self){
@@ -184,10 +263,15 @@ impl Editor {
         if self.terminal_size.height == 0 || self.terminal_size.width == 0 {
             return;
         } //ensuring rendering is appropiate
+         let bottom_bar_row = self.terminal_size.height.saturating_sub(1);
         let _ = Terminal::hide_caret();
         //start adding ui elements from bottom
-        self.message_bar
-            .render(self.terminal_size.height.saturating_sub(1));
+        if let Some(command_bar)= &mut self.command_bar{
+            command_bar.render(bottom_bar_row);
+        }else{
+            self.message_bar.render(bottom_bar_row);
+        } // deals with rendering of command or message bar
+
         if self.terminal_size.height > 1 {
             self.status_bar
                 .render(self.terminal_size.height.saturating_sub(2));
@@ -196,7 +280,17 @@ impl Editor {
             self.view.render(0);
         } //if height is greater than 2 , render view
 
-        let _ = Terminal::move_caret_to(self.view.caret_position());
+        let new_caret_pos = if let Some(command_bar)=&self.command_bar{
+            Position{
+                row: bottom_bar_row,
+                col: command_bar.caret_position_col(),
+            }
+        }else{
+            self.view.caret_position()
+        };//ensure that caret block is correctly placed , if no command bar present do the same as before by querying View
+        // if command bar present calc correct pos based on column within command_bar and its posn on terminal
+
+        let _ = Terminal::move_caret_to(new_caret_pos);
 
         let _ = Terminal::show_caret();
         let _ = Terminal::execute(); // flushes commands
