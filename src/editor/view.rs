@@ -206,7 +206,7 @@ impl View {
 
             if gi > 0 && gi == last {
                 // End-of-line: place caret ON the last grapheme
-                line.width_until(last - 1)
+                line.width_until(last )
             } else {
                 line.width_until(gi)
             }
