@@ -29,6 +29,24 @@ impl Buffer {
         })
     }
 
+    pub fn search(&self, query: &str)-> Option<Location>{
+        //determine line_index and grapheme index of match and return if found else return None
+        for (line_index, line) in self.lines.iter().enumerate(){
+            //iterate over vector , use enumerate on it to iterate over content get current index within the vector
+            if let Some(grapheme_index)= line.search(query){
+                //for each line call search fxn to return grapheme index of match if present
+                return Some(Location{
+                    //on successful search return corresponding Location thus created and end loop , else keep looping
+                    grapheme_index,
+                    line_index
+                });
+
+            }
+            
+        }
+        None// if none of the lines contain the result we return None
+    }
+
     pub fn save_to_file(&self, file_info: &FileInfo) -> Result<(), Error> {
          if let Some(file_path) = &file_info.get_path() {
             let mut file = File::create(file_path)?;

@@ -10,6 +10,12 @@ use buffer::Buffer;
 mod fileinfo;
 use fileinfo::FileInfo;
 
+struct SearchInfo{
+    prev_location: Location,
+}
+
+
+
 #[derive(Clone, Copy, Default)]
 pub struct Location {
     pub grapheme_index: usize,
@@ -24,7 +30,9 @@ pub struct View {
 
     text_location: Location,
     scroll_offset: Position,
+    search_info: Option<SearchInfo>,
 }
+
 
 impl View {
     //no need of new method as editor can create it from outside and configure as needed
@@ -41,6 +49,40 @@ impl View {
     pub const fn is_file_loaded(&self) -> bool {
         self.buffer.is_file_loaded()
     }// allows editor to determine whether or not to prompt for file_name
+
+    //region: Search
+    pub fn enter_search(&mut self){
+        //entering means storing prev location
+        self.search_info  = Some(SearchInfo { prev_location: self.text_location, });
+
+    }
+
+    pub fn exit_search(&mut self){
+        self.search_info = None;
+        //exiting means dismissing the search_info and prev location
+    }
+
+    pub fn dismiss_search(&mut self){
+        //restore old text location , scrolling to it and dismiss search info
+        if let Some(search_info)= &self.search_info{
+            self.text_location = search_info.prev_location;
+        }
+        self.search_info=None;
+        self.scroll_text_location_into_view();
+    }
+
+    pub fn search(&mut self , query: &str){
+        if query.is_empty(){
+            return
+        }
+        if let Some(location) = self.buffer.search(query){
+            self.text_location = location;
+            self.scroll_text_location_into_view();
+            //call a new method on buffer to perform search and return a query , store this and scroll to it
+        }
+    }
+
+    //end region
 
     //region:File io
     pub fn load(&mut self, file_name: &str)-> Result<(),Error> {
