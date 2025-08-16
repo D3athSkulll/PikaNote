@@ -1,7 +1,9 @@
+pub type Row = usize;
+pub type Col = usize; // Adding new type defs for Row and Col for simplicity
 #[derive(Copy,Clone, Default)]
 pub struct Position{
-    pub col: usize,
-    pub row: usize,
+    pub col: Col,
+    pub row: Row,
 }
 impl Position{
     pub const fn saturating_sub(self, other: Self)->Self{

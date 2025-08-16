@@ -1,10 +1,10 @@
+use super::FileInfo;
+use super::Line;
+use super::Location;
 use std::fs::{read_to_string, File};
 use std::io::Error;
 use std::io::Write;
 
-use super::FileInfo;
-use super::Line;
-use super::Location;
 
 #[derive(Default)]
 pub struct Buffer {
@@ -29,21 +29,29 @@ impl Buffer {
         })
     }
 
-    pub fn search(&self, query: &str)-> Option<Location>{
+    pub fn search(&self, query: &str, from: Location)-> Option<Location>{
         //determine line_index and grapheme index of match and return if found else return None
-        for (line_index, line) in self.lines.iter().enumerate(){
-            //iterate over vector , use enumerate on it to iterate over content get current index within the vector
-            if let Some(grapheme_index)= line.search(query){
-                //for each line call search fxn to return grapheme index of match if present
+        for (line_idx, line) in self.lines.iter().enumerate().skip(from.line_idx){
+            let from_grapheme_idx = if line_idx == from.line_idx{
+                from.grapheme_idx
+            } else{
+                0
+            };
+            if let Some(grapheme_idx) = line.search(query, from_grapheme_idx){
                 return Some(Location{
-                    //on successful search return corresponding Location thus created and end loop , else keep looping
-                    grapheme_index,
-                    line_index
+                    grapheme_idx,
+                    line_idx,
                 });
-
             }
-            
+
         }
+        for(line_idx,line) in self.lines.iter().enumerate().take(from.line_idx){
+            if let Some(grapheme_idx) = line.search(query, 0){
+                return Some(Location { grapheme_idx, line_idx });
+            }
+        }
+
+
         None// if none of the lines contain the result we return None
     }
 
@@ -82,46 +90,46 @@ impl Buffer {
     }
 
     pub fn insert_char(&mut self, character: char, at: Location) {
-        if at.line_index > self.height() {
+        if at.line_idx > self.height() {
             return;
         } // dont insert anything more than one line below doc
-        if at.line_index == self.height() {
+        if at.line_idx == self.height() {
             self.lines.push(Line::from(&character.to_string()));
             self.dirty = true;
         }
         // add new line at edge of document
-        else if let Some(line) = self.lines.get_mut(at.line_index) {
-            line.insert_char(character, at.grapheme_index);
+        else if let Some(line) = self.lines.get_mut(at.line_idx) {
+            line.insert_char(character, at.grapheme_idx);
             self.dirty = true;
         } // if in document middle let line handle the insertion
     }
     pub fn delete(&mut self, at: Location) {
-        if let Some(line) = self.lines.get(at.line_index) {
-            if at.grapheme_index >= line.grapheme_count()
-                && self.height() > at.line_index.saturating_add(1)
+        if let Some(line) = self.lines.get(at.line_idx) {
+            if at.grapheme_idx >= line.grapheme_count()
+                && self.height() > at.line_idx.saturating_add(1)
             {
                 // checking if we are at end of current line and next line exists
-                let next_line = self.lines.remove(at.line_index.saturating_add(1));
+                let next_line = self.lines.remove(at.line_idx.saturating_add(1));
                 #[allow(clippy::indexing_slicing)]
-                self.lines[at.line_index].append(&next_line);
+                self.lines[at.line_idx].append(&next_line);
                 self.dirty = true;
-            } else if at.grapheme_index < line.grapheme_count() {
+            } else if at.grapheme_idx < line.grapheme_count() {
                 #[allow(clippy::indexing_slicing)]
-                self.lines[at.line_index].delete(at.grapheme_index);
+                self.lines[at.line_idx].delete(at.grapheme_idx);
                 self.dirty = true;
             }
         }
     }
 
     pub fn insert_newline(&mut self, at: Location) {
-        if at.line_index == self.height() {
+        if at.line_idx == self.height() {
             self.lines.push(Line::default());
             self.dirty = true;
         }
         //if at end of doc insert new line
-        else if let Some(line) = self.lines.get_mut(at.line_index) {
-            let new = line.split(at.grapheme_index);
-            self.lines.insert(at.line_index.saturating_add(1), new);
+        else if let Some(line) = self.lines.get_mut(at.line_idx) {
+            let new = line.split(at.grapheme_idx);
+            self.lines.insert(at.line_idx.saturating_add(1), new);
             self.dirty = true;
         } //if in mid of doc, split current line and add splitted to self.lines at proper index
     }

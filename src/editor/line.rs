@@ -1,4 +1,7 @@
-use std::{fmt, ops::Range};
+use std::{
+    fmt,
+    ops::{Deref,Range}
+};
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
@@ -8,6 +11,8 @@ enum GraphemeWidth {
     Full,
 }
 
+type GraphemeIdx = usize;
+type ByteIdx=usize; // new typedefs for better understanding of function returntypes
 impl GraphemeWidth {
     const fn saturating_add(self, other: usize) -> usize {
         match self {
@@ -17,6 +22,7 @@ impl GraphemeWidth {
     }
 }
 
+#[derive(Clone)]
 struct TextFragment {
     grapheme: String,
     rendered_width: GraphemeWidth,
@@ -24,7 +30,7 @@ struct TextFragment {
     start_byte_idx: usize,// keep track of start byte index for grapheme
 }
 
-#[derive(Default)]
+#[derive(Default,Clone)]
 pub struct Line {
     fragments: Vec<TextFragment>,
     string: String,//store entire string
@@ -89,7 +95,7 @@ impl Line {
         }
     }
 
-    pub fn get_visible_graphemes(&self, range: Range<usize>) -> String {
+    pub fn get_visible_graphemes(&self, range: Range<GraphemeIdx>) -> String {
         if range.start >= range.end {
             return String::new();
         }
@@ -120,14 +126,14 @@ impl Line {
         result
     }
 
-    pub fn grapheme_count(&self) -> usize {
+    pub fn grapheme_count(&self) -> GraphemeIdx {
         self.fragments.len()
     }
 
-    pub fn width_until(&self, grapheme_index: usize) -> usize {
+    pub fn width_until(&self, grapheme_idx: GraphemeIdx) -> GraphemeIdx {
         self.fragments
             .iter()
-            .take(grapheme_index)
+            .take(grapheme_idx)
             .map(|fragment| match fragment.rendered_width {
                 GraphemeWidth::Half => 1,
                 GraphemeWidth::Full => 2,
@@ -135,11 +141,12 @@ impl Line {
             .sum()
     }
     
-    pub fn width(&self) -> usize {
+    pub fn width(&self) -> GraphemeIdx {
         self.width_until(self.grapheme_count())
     }//convenience method to simplify CommandBar implementation
        // Inserts a character into the line, or appends it at the end if at > len of the string
-    pub fn insert_char(&mut self, character: char, at: usize) {
+
+    pub fn insert_char(&mut self, character: char, at: GraphemeIdx) {
         if let Some(fragment)= self.fragments.get(at){
             self.string.insert(fragment.start_byte_idx,character);
             // use convenience method provided by string to insert character at byte_idx
@@ -151,7 +158,7 @@ impl Line {
      pub fn append_char(&mut self, character: char) {
         self.insert_char(character, self.grapheme_count());
     }
-    pub fn delete(&mut self, at: usize) {
+    pub fn delete(&mut self, at: GraphemeIdx) {
         if let Some(fragment) = self.fragments.get(at) {
 
         let start = fragment.start_byte_idx;
@@ -171,7 +178,7 @@ impl Line {
         self.rebuild_fragments(); // update existing string and remove all fragments and rebuild
     }
 
-    pub fn split(&mut self, at: usize) -> Self {
+    pub fn split(&mut self, at: GraphemeIdx) -> Self {
         if let Some(fragment) = self.fragments.get(at) {
             let remainder = self.string.split_off(fragment.start_byte_idx);
             self.rebuild_fragments();
@@ -182,29 +189,27 @@ impl Line {
     }
 
     fn byte_idx_to_grapheme_idx(&self, byte_idx: usize)-> usize{
-        // conversion method
-        for(grapheme_idx,fragment) in self.fragments.iter().enumerate(){
-            if fragment.start_byte_idx >= byte_idx{
-                return grapheme_idx;
-            }
-        }
-        #[cfg(debug_assertions)]
-        {
-            panic!("Invalid byte_idx passed to byte_idx_to_grapheme_idx: {byte_idx:?}");
-        }
-        #[cfg(not(debug_assertions))]
-        {
-            0
-        }
+        // simpler conversion method
+         self.fragments
+            .iter()
+            .position(|fragment| fragment.start_byte_idx >= byte_idx)
+            .map_or(0, |grapheme_idx| grapheme_idx)
 
     }
-    pub fn search(&self, query: &str)-> Option<usize>{
+
+    fn grapheme_idx_to_byte_idx(&self, grapheme_idx: GraphemeIdx)->ByteIdx{
+        self.fragments
+            .get(grapheme_idx)
+            .map_or(0,|fragment| fragment.start_byte_idx)//get apt fragment and get its byte_idx
+    }
+
+
+    pub fn search(&self, query: &str, from_grapheme_idx: GraphemeIdx)-> Option<GraphemeIdx>{
+        let start_byte_idx = self.grapheme_idx_to_byte_idx(from_grapheme_idx);
         self.string
-            .find(query)// returns Option<usize> where usize is byte_idx
-            .map(|byte_idx| self.byte_idx_to_grapheme_idx(byte_idx))
-            //map converts one option to other
-            //if find returns None, map returns None]
-            // if find returns Some(x) then map works on that output to the closure
+            .get(start_byte_idx..)
+            .and_then(|substr| substr.find(query))
+            .map(|byte_idx| self.byte_idx_to_grapheme_idx(byte_idx.saturating_add(start_byte_idx)))
 
     }
 
@@ -214,5 +219,12 @@ impl Line {
 impl fmt::Display for Line {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", self.string)
+    }
+}
+
+impl Deref for Line{
+    type Target = str;
+    fn deref(&self)-> &Self::Target{
+        &self.string
     }
 }

@@ -21,7 +21,7 @@ use commandbar::CommandBar;
 use documentstatus::DocumentStatus;
 use line::Line;
 use messagebar::MessageBar;
-use position::Position;
+use position::{Col,Row,Position};
 use size::Size;
 use statusbar::StatusBar;
 use terminal::Terminal;
@@ -31,6 +31,7 @@ use view::View;
 use self::command::{
     Command::{self, Edit, Move, System},
     Edit::InsertNewLine,
+    Move::{Down,Right},
     System::{Dismiss, Quit, Resize, Save, Search},
 
 
@@ -296,7 +297,7 @@ impl Editor {
     //Region: Search Command & Prompt Handling
     fn process_command_during_search(&mut self, command: Command){
         match command{
-            System(Quit| Resize(_)| Search | Save)| Move(_)=>{}
+            
             System(Dismiss) =>{
                 self.set_prompt(PromptType::None);
                 self.view.dismiss_search();//restore old text location and scroll to it
@@ -310,6 +311,8 @@ impl Editor {
                 let query = self.command_bar.value();
                 self.view.search(&query);//handle input and perform actual search
             }
+            Move(Right | Down)=> self.view.search_next(),
+            System(Quit| Resize(_)| Search | Save)| Move(_)=>{}
         }
     } 
     //end region 
@@ -332,7 +335,8 @@ impl Editor {
             PromptType::Save=>self.command_bar.set_prompt("Save as: "),
             PromptType::Search=> {
                 self.view.enter_search();
-                self.command_bar.set_prompt("Search (Esc to cancel) : ");
+                self.command_bar
+                    .set_prompt("Search (Esc to cancel, and Arrows to navigate) : ");
             }
         }
         self.command_bar.clear_value();
