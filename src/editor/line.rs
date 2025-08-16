@@ -38,6 +38,7 @@ pub struct Line {
 
 impl Line {
     pub fn from(line_str: &str) -> Self {
+        debug_assert!(line_str.is_empty() || line_str.lines().count() == 1);
         let fragments = Self::str_to_fragments(line_str);
         Self { 
             fragments,
@@ -144,9 +145,10 @@ impl Line {
     pub fn width(&self) -> GraphemeIdx {
         self.width_until(self.grapheme_count())
     }//convenience method to simplify CommandBar implementation
-       // Inserts a character into the line, or appends it at the end if at > len of the string
+       // Inserts a character into the line, or appends it at the end if at == grapheme_count + 1
 
     pub fn insert_char(&mut self, character: char, at: GraphemeIdx) {
+        debug_assert!(at.saturating_sub(1) <= self.grapheme_count());
         if let Some(fragment)= self.fragments.get(at){
             self.string.insert(fragment.start_byte_idx,character);
             // use convenience method provided by string to insert character at byte_idx
@@ -155,10 +157,14 @@ impl Line {
         }//if no fragment found, character should be added at end
         self.rebuild_fragments(); // rebuild fragments to acccount for updated clusters and byte indices
     }
+     
+     
      pub fn append_char(&mut self, character: char) {
         self.insert_char(character, self.grapheme_count());
     }
+
     pub fn delete(&mut self, at: GraphemeIdx) {
+        debug_assert!(at.saturating_sub(1) <= self.grapheme_count());
         if let Some(fragment) = self.fragments.get(at) {
 
         let start = fragment.start_byte_idx;
@@ -168,7 +174,8 @@ impl Line {
              self.string.drain(start..end);//removes substring from start to end
              self.rebuild_fragments();
     }
-}
+    }
+
     pub fn delete_last(&mut self){
         self.delete(self.grapheme_count().saturating_sub(1));
     }
@@ -189,22 +196,57 @@ impl Line {
     }
 
     fn byte_idx_to_grapheme_idx(&self, byte_idx: usize)-> usize{
+         debug_assert!(byte_idx <= self.string.len());
         // simpler conversion method
          self.fragments
             .iter()
             .position(|fragment| fragment.start_byte_idx >= byte_idx)
-            .map_or(0, |grapheme_idx| grapheme_idx)
+            .map_or_else(
+                || {
+                    #[cfg(debug_assertions)]
+                    {
+                        panic!("Fragment not found for byte index: {byte_idx:?}");
+                    }
+                    #[cfg(not(debug_assertions))]
+                    {
+                        0
+                    }
+                },
+                |grapheme_idx| grapheme_idx,
+            )
 
     }
 
     fn grapheme_idx_to_byte_idx(&self, grapheme_idx: GraphemeIdx)->ByteIdx{
-        self.fragments
-            .get(grapheme_idx)
-            .map_or(0,|fragment| fragment.start_byte_idx)//get apt fragment and get its byte_idx
+        debug_assert!(grapheme_idx <= self.grapheme_count());
+        if grapheme_idx == 0 || self.grapheme_count() == 0 {
+            return 0;
+        }
+        self.fragments.get(grapheme_idx).map_or_else(
+            || {
+                #[cfg(debug_assertions)]
+                {
+                    panic!("Fragment not found for grapheme index: {grapheme_idx:?}");
+                }
+                #[cfg(not(debug_assertions))]
+                {
+                    0
+                }
+            },
+            |fragment| fragment.start_byte_idx,
+        )
     }
 
 
-    pub fn search(&self, query: &str, from_grapheme_idx: GraphemeIdx)-> Option<GraphemeIdx>{
+    pub fn search_forward(
+        &self,
+        query: &str,
+        from_grapheme_idx: GraphemeIdx,
+        ) -> Option<GraphemeIdx> {
+        debug_assert!(from_grapheme_idx <= self.grapheme_count());
+        if from_grapheme_idx == self.grapheme_count() {
+            return None;
+        }
         let start_byte_idx = self.grapheme_idx_to_byte_idx(from_grapheme_idx);
         self.string
             .get(start_byte_idx..)
@@ -213,7 +255,27 @@ impl Line {
 
     }
 
+    pub fn search_backward(
+         &self,
+        query: &str,
+        from_grapheme_idx: GraphemeIdx,
+    ) -> Option<GraphemeIdx> {
+        debug_assert!(from_grapheme_idx <= self.grapheme_count());
 
+        if from_grapheme_idx == 0 {
+            return None;
+        }
+         let end_byte_index = if from_grapheme_idx == self.grapheme_count() {
+            self.string.len()
+        } else {
+            self.grapheme_idx_to_byte_idx(from_grapheme_idx)
+        };//create a substring to search in. for backward search , go from beginning to current loc
+         self.string
+            .get(..end_byte_index)//get substring from last byte idx
+            .and_then(|substr| substr.match_indices(query).last())//perform match indices on result and obtain an iterator of all indices for search query
+            .map(|(index, _)| self.byte_idx_to_grapheme_idx(index))
+
+}
 }
 
 impl fmt::Display for Line {

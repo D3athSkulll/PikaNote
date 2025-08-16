@@ -3,7 +3,7 @@ use super::{
     command::{Edit,Move},
     Col, Row, DocumentStatus, Line, Position, Size, Terminal, UIComponent, NAME, VERSION,
 };
-use std::{cmp::min, io::Error};
+use std::{cmp::min, default, io::Error};
 
 mod buffer;
 use buffer::Buffer;
@@ -13,6 +13,14 @@ mod fileinfo;
 use fileinfo::FileInfo;
 mod searchinfo;
 use searchinfo::SearchInfo;
+#[derive(Default,Clone,Copy,PartialEq,Eq)]
+pub enum SearchDirection{
+    #[default]
+    Forward,
+    Backward,
+}
+
+
 #[derive(Default)]
 pub struct View {
     buffer: Buffer,
@@ -48,7 +56,7 @@ impl View {
         self.search_info  = Some(SearchInfo { 
             prev_location: self.text_location,
             prev_scroll_offset: self.scroll_offset,
-            query: Line::default(),// use Line instead of String to use grapheme/unicode capabilites of Line
+            query: None,//made query optional since no compulsion on query to be present while search active now
          });
 
     }
@@ -63,7 +71,11 @@ impl View {
         if let Some(search_info)= &self.search_info{
             self.text_location = search_info.prev_location;
             self.scroll_offset = search_info.prev_scroll_offset;
-            self.set_needs_redraw(true);//reset text location and scroll offset on dismiss, mark redraw since not calling scroll_text_location_into_view
+            self.scroll_text_location_into_view(); // ensure prev location still visible even if terminal resize during search
+            /*
+            Suppose you have a wide terminal. You store the text location and scroll offset and enter search. You resize the screen and dismiss search.
+            What happened is that the previous scroll offset would have placed the text position out of view. This is fixed by scrolling the text location into view again here.
+             */
         }
         self.search_info=None;
 
@@ -71,52 +83,63 @@ impl View {
 
     pub fn search(&mut self , query: &str){
         if let Some(search_info) = &mut self.search_info{
-            search_info.query = Line::from(query);
+            search_info.query = Some(Line::from(query));
         }
-        self.search_from(self.text_location);
-        //set query on search_info, call search_from with curent location 
+        self.search_in_direction(self.text_location, SearchDirection::default());
+        //calls new method and searches in default direction i.e forward
     }
 
-    pub fn search_from(&mut self, from : Location){
-        if let Some(search_info) = self.search_info.as_ref(){
-            let query = &search_info.query;
-            if query.is_empty(){
-                return;
-            }//retrieve search_info extract query and check if its empty
+    // Attempts to get the current search query - for scenarios where the search query absolutely must be there.
+    // Panics if not present in debug, or if search info is not present in debug
+    // Returns None on release.
+    fn get_search_query(&self)->Option<&Line>{
+        //showcase how to retrive a double option search_info is optiona and query is also a option 
 
-            if let Some(location) = self.buffer.search(query, from){
-                self.text_location = location;
-                self.center_text_location();
-                //on search result , set text location and center to it instead of scrolling.
+        let query = self
+            .search_info
+            .as_ref()
+            .and_then(|search_info| search_info.query.as_ref());
+
+        debug_assert!(
+            query.is_some(),
+            "Attempting to search with malformed search info present"
+        );
+        query
+    }
+    
+
+    fn search_in_direction(&mut self, from: Location, direction: SearchDirection){
+        //renamed function 
+        if let Some(location) = self.get_search_query().and_then(|query|{
+            //get location of next match by getting query 
+            if query.is_empty(){
+                None
+            }else if direction == SearchDirection::Forward{
+                self.buffer.search_forward(query,from)
             }else{
-                #[cfg(debug_assertions)]
-                {
-                    panic!("Attempting to search_info without search_info");
-                    //panic to bug i.e search_info is empty
-                }
-            }
+                self.buffer.search_backward(query, from)
+            }//calling the specialised search fxn 
+        }){
+            self.text_location=location;
+            self.center_text_location();//handling the result as before
         }
     }
 
     pub fn search_next(&mut self){
-        let step_right;
-        if let Some(search_info) = self.search_info.as_ref(){
-            step_right= min(search_info.query.grapheme_count(),1);
-        }else{
-            #[cfg(debug_assertions)]
-            {
-                panic!("Attempting to search_next without search_info");
-            }
-            #[cfg(not(debug_assertions))]{
-                return;
-            }
-        }
+        let step_right = self
+            .get_search_query()
+            .map_or(1, |query| min(query.grapheme_count(), 1));
+
         let location = Location{
             line_idx: self.text_location.line_idx,
             grapheme_idx: self.text_location.grapheme_idx.saturating_add(step_right),
             //start the new search behind current match
         };
-        self.search_from(location);
+        self.search_in_direction(location, SearchDirection::Forward);
+    }
+
+    pub fn search_prev(&mut self){
+        self.search_in_direction(self.text_location, SearchDirection::Backward);
     }
 
     //end region
@@ -309,6 +332,7 @@ impl View {
 
     pub fn text_location_to_position(&self) -> Position {
         let row = self.text_location.line_idx;
+         debug_assert!(row.saturating_sub(1) <= self.buffer.lines.len());
         let col = self.buffer.lines.get(row).map_or(0, |line| {
             line.width_until(self.text_location.grapheme_idx)
         });

@@ -29,30 +29,66 @@ impl Buffer {
         })
     }
 
-    pub fn search(&self, query: &str, from: Location)-> Option<Location>{
-        //determine line_index and grapheme index of match and return if found else return None
-        for (line_idx, line) in self.lines.iter().enumerate().skip(from.line_idx){
-            let from_grapheme_idx = if line_idx == from.line_idx{
+    pub fn search_forward(&self, query: &str, from: Location)-> Option<Location>{
+        //revamped search method with some iterator logic 
+        if query.is_empty(){
+            return None;
+        }
+        let mut is_first = true; // flag to mark first search as it should be done different
+        for(line_idx, line) in self
+            .lines
+            .iter()//create iterator over all lines
+            .enumerate()//turns it into an iterator over pair (line_idx,line). this is needed to calc location on a match
+            .cycle()//make iterator endless that is if reach end then wrap to start, forever
+            .skip(from.line_idx)//from this skip all the linesbefore ones we're interested in
+            .take(self.lines.len().saturating_add(1))//one more to search current line twice(from middle, and from start)
+            //now we have all lines in iterator we need, current line, all till end of doc, start of doc, current line
+            {
+                let from_grapheme_idx = if is_first{
+                    is_first = false;// for first search start searching from given grapheme_idx, for others start from left
+                    from.grapheme_idx
+                }else{
+                    0
+                };
+                if let Some(grapheme_idx) = line.search_forward(query,from_grapheme_idx){
+                    return Some(Location{
+                        grapheme_idx,
+                        line_idx,
+                    });
+                }
+            }
+            None
+    }
+
+    pub fn search_backward(&self,query: &str, from: Location)-> Option<Location>{
+        if query.is_empty(){
+            return None;
+        }
+        let mut is_first = true;
+        for (line_idx,line) in self
+            .lines
+            .iter()
+            .rev()
+            .cycle()
+            .enumerate()
+            .skip(self.lines.len().saturating_sub(from.line_idx).saturating_sub(1))
+            .take(self.lines.len().saturating_add(1))
+        {
+            let from_grapheme_idx = if is_first{
+                is_first=false;
                 from.grapheme_idx
-            } else{
-                0
+            }else{
+                line.grapheme_count()
             };
-            if let Some(grapheme_idx) = line.search(query, from_grapheme_idx){
+            if let Some(grapheme_idx) = line.search_backward(query, from_grapheme_idx){
                 return Some(Location{
                     grapheme_idx,
-                    line_idx,
+                    line_idx
                 });
             }
 
         }
-        for(line_idx,line) in self.lines.iter().enumerate().take(from.line_idx){
-            if let Some(grapheme_idx) = line.search(query, 0){
-                return Some(Location { grapheme_idx, line_idx });
-            }
-        }
-
-
-        None// if none of the lines contain the result we return None
+        None
     }
 
     pub fn save_to_file(&self, file_info: &FileInfo) -> Result<(), Error> {
@@ -60,6 +96,11 @@ impl Buffer {
             let mut file = File::create(file_path)?;
             for line in &self.lines {
                 writeln!(file, "{line}")?;
+            }
+        }else{
+            #[cfg(debug_assertions)]
+            {
+                panic!("Attempting to save with no file present");
             }
         }
         //removal of self.dirty is essential to keep this non mutable, as mutable version would not work for case when we want to save to an existing file
@@ -90,9 +131,8 @@ impl Buffer {
     }
 
     pub fn insert_char(&mut self, character: char, at: Location) {
-        if at.line_idx > self.height() {
-            return;
-        } // dont insert anything more than one line below doc
+       debug_assert!(at.line_idx <= self.height());
+       
         if at.line_idx == self.height() {
             self.lines.push(Line::from(&character.to_string()));
             self.dirty = true;

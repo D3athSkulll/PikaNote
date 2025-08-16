@@ -31,7 +31,7 @@ use view::View;
 use self::command::{
     Command::{self, Edit, Move, System},
     Edit::InsertNewLine,
-    Move::{Down,Right},
+    Move::{Up,Down,Left,Right},
     System::{Dismiss, Quit, Resize, Save, Search},
 
 
@@ -89,6 +89,7 @@ impl Editor {
 
         let args: Vec<String> = env::args().collect();
         if let Some(file_name) = args.get(1) {
+            debug_assert!(!file_name.is_empty());
             if editor.view.load(file_name).is_err() {
                  editor.update_message(&format!("ERR: Could not open file: {file_name}"));
             } // Load file into buffer if filename given
@@ -113,6 +114,10 @@ impl Editor {
                     #[cfg(debug_assertions)]
                     {
                         panic!("Could not read event: {error:?}");
+                    }
+                       #[cfg(not(debug_assertions))]
+                    {
+                        let _ = err;
                     }
                 }
             }
@@ -154,6 +159,9 @@ impl Editor {
             self.view.caret_position()
         };//ensure that caret block is correctly placed , if no command bar present do the same as before by querying View
         // if command bar present calc correct pos based on column within command_bar and its posn on terminal
+        debug_assert!(new_caret_pos.col <= self.terminal_size.width);
+        debug_assert!(new_caret_pos.row <= self.terminal_size.height);
+
 
         let _ = Terminal::move_caret_to(new_caret_pos);
 
@@ -312,6 +320,7 @@ impl Editor {
                 self.view.search(&query);//handle input and perform actual search
             }
             Move(Right | Down)=> self.view.search_next(),
+            Move(Up | Left) => self.view.search_prev(),
             System(Quit| Resize(_)| Search | Save)| Move(_)=>{}
         }
     } 
