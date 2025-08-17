@@ -100,7 +100,7 @@ impl AnnotatedString {
                 if shortened {
                     annotation.end_byte_idx.saturating_sub(len_difference)
                 } else {
-                    annotatin.end_byte_idx.saturating_add(len_difference)
+                    annotation.end_byte_idx.saturating_add(len_difference)
                 }
             } else if annotation.end_byte_idx >= start_byte_idx {
                 // For annotations ending within the replaced range, we move the end index by the difference in length, constrained to the beginning or end of the replaced range.
@@ -137,13 +137,13 @@ impl Display for AnnotatedString{
     }
 }
 
-impl <'a>IntoIterator for &'a AnnotatedString{
+impl <'a> IntoIterator for &'a AnnotatedString{
     //allows AnnotatedString to turn into iterator,
     //calling into_iter() on AnnotatedString will return AnnotatedStringIterator which returns AnnotatedStringPart s
     //lifetime ensure that no copy of string parts
 
     type Item =AnnotatedStringPart<'a>;
-    type Iterator=AnnotatedStringIterator<'a>;
+    type IntoIter=AnnotatedStringIterator<'a>;
 
     fn into_iter(self)->Self::IntoIter{
         AnnotatedStringIterator{
