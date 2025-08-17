@@ -143,7 +143,7 @@ impl <'a> IntoIterator for &'a AnnotatedString{
     //lifetime ensure that no copy of string parts
 
     type Item =AnnotatedStringPart<'a>;
-    type IntoIter=AnnotatedStringIterator<'a>;
+    type IntoIter= AnnotatedStringIterator<'a>;
 
     fn into_iter(self)->Self::IntoIter{
         AnnotatedStringIterator{

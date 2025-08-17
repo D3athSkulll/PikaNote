@@ -4,7 +4,7 @@ use std::cmp::min;
 
 use super::{AnnotatedString, AnnotatedStringPart};
 
-pub struct AnnotatedStringIterator{
+pub struct AnnotatedStringIterator<'a>{
     pub annotated_string: &'a AnnotatedString, //we wish to refer original annotedstring but not own it as we just try to look into it,
     //'a i.e lifetime concept helps here by giving access as long as iterator is alive
     pub current_idx: usize, // iterator keeps track of current_byte_idx already processed by annoted string
@@ -41,7 +41,7 @@ impl<'a> Iterator for AnnotatedStringIterator<'a>{
                 self.current_idx=end_idx;
                 //Advance current idx before returning, so call to next annotation returns next
                 return Some(AnnotatedStringPart{
-                    string: &self.annotated_string.string(start_idx..end_idx),
+                    string: &self.annotated_string.string[start_idx..end_idx],
                     annotation_type: Some(annotation.annotation_type)
                 });
                 //return annotedstring part which is slice of annoted   
