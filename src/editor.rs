@@ -5,28 +5,22 @@ use std::{
     panic::{set_hook, take_hook},
 };
 
+mod annotedstring;
 mod command;
-mod commandbar;
+mod uicomponents;
 mod documentstatus;
 mod line;
-mod messagebar;
 mod position;
 mod size;
-mod statusbar;
 mod terminal;
-mod uicomponent;
-mod view;
 
-use commandbar::CommandBar;
+use annotedstring::{AnnotedString,AnnotedType};
+use uicomponents::{CommandBar, MessageBar, View, StatusBar, UIComponent};//contains the components as a whole
 use documentstatus::DocumentStatus;
 use line::Line;
-use messagebar::MessageBar;
 use position::{Col,Row,Position};
 use size::Size;
-use statusbar::StatusBar;
 use terminal::Terminal;
-use uicomponent::UIComponent;
-use view::View;
 
 use self::command::{
     Command::{self, Edit, Move, System},
