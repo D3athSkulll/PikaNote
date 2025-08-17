@@ -1,6 +1,8 @@
 use std::{cmp::min, io::Error};
 
-use super::{command::Edit,Line,Size,Terminal, UIComponent};
+
+use super::super::{command::Edit, Line, Size, Terminal};
+use super::UIComponent;
 
 #[derive(Default)]
 pub struct CommandBar{
@@ -53,7 +55,7 @@ impl UIComponent for CommandBar{
         self.needs_redraw
     }
 
-    fn set_size(&mut self, size: super::Size) {
+    fn set_size(&mut self, size: super::super::Size) {
         self.size = size;
     }
 

@@ -1,24 +1,22 @@
 
-use super::{
+use super::super::{
     command::{Edit,Move},
-    Col, Row, DocumentStatus, Line, Position, Size, Terminal, UIComponent, NAME, VERSION,
+    Col, Row, DocumentStatus, Line, Position, Size, Terminal, NAME, VERSION,
 };
+use super::UIComponent;
 use std::{cmp::min, default, io::Error};
 
 mod buffer;
 use buffer::Buffer;
+mod searchdirection;
+use searchdirection::SearchDirection;
 mod location;
 use location::Location;
 mod fileinfo;
 use fileinfo::FileInfo;
 mod searchinfo;
 use searchinfo::SearchInfo;
-#[derive(Default,Clone,Copy,PartialEq,Eq)]
-pub enum SearchDirection{
-    #[default]
-    Forward,
-    Backward,
-}
+
 
 
 #[derive(Default)]
@@ -64,6 +62,7 @@ impl View {
     pub fn exit_search(&mut self){
         self.search_info = None;
         //exiting means dismissing the search_info and prev location
+        self.set_needs_redraw(true);//we are now rendering  by highlighting search results, we need to explicitely request redraw upon exiting search , ensuring previously highlighted search results not highlighted
     }
 
     pub fn dismiss_search(&mut self){
@@ -78,6 +77,7 @@ impl View {
              */
         }
         self.search_info=None;
+        self.set_needs_redraw(true);//same as above
 
     }
 
@@ -122,6 +122,7 @@ impl View {
         }){
             self.text_location=location;
             self.center_text_location();//handling the result as before
+            self.set_needs_redraw(true);//to make highlighting show up we trigger redraw upon search
         }
     }
 
@@ -442,7 +443,24 @@ impl UIComponent for View {
             if let Some(line) = self.buffer.lines.get(line_idx) {
                 let left = self.scroll_offset.col;
                 let right = self.scroll_offset.col.saturating_add(width);
-                Self::render_line(current_row, &line.get_visible_graphemes(left..right))?;
+
+                
+               //here we get annotated string and pass it to terminal . setup   query and selected match parameters
+               let query = self
+                    .search_info
+                    .as_ref()
+                    .and_then(|search_info| search_info.query.as_deref());
+                //similar to obtaining query elsewhere, go to search info , get query out of it as reference, if either is None, query also none
+                let selected_match = (self.text_location.line_idx==line_idx&&query.is_some())//attempt to get selected match
+                //here we set conditions for selected match i.e if line to be render is one caret is in and if we have a query
+                    .then_some(self.text_location.grapheme_idx);
+                //we call then_some on that boolean , if boolean is false return None, if true return Some
+                Terminal::print_annotated_row(
+                    current_row,
+                    &line.get_annotated_visible_substr(left..right,query,selected_match),
+                )?;
+
+
             } else if current_row == bottom_third && self.buffer.is_empty() {
                 Self::render_line(current_row, &Self::build_welcome_message(width))?;
             } else {

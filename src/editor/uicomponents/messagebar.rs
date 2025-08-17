@@ -1,7 +1,8 @@
 use std::{io::Error, time::{Duration,Instant}};
 
 
-use super::{Size, Terminal, UIComponent};
+use super::super::{Size, Terminal};
+use super::UIComponent;
 
 const DEFAULT_DURATION: Duration = Duration::new(5, 0);
 struct Message{

@@ -14,7 +14,7 @@ mod position;
 mod size;
 mod terminal;
 
-use annotatedstring::{AnnotatedString,Annotationype};
+use annotatedstring::{AnnotatedString,AnnotationType};
 use uicomponents::{CommandBar, MessageBar, View, StatusBar, UIComponent};//contains the components as a whole
 use documentstatus::DocumentStatus;
 use line::Line;
