@@ -32,7 +32,7 @@
   - Backward search
   - Incremental/live search
   - Scroll to next/previous match
-  - 
+    
 - **Annotated String System** 🧵  
   Internal representation to attach metadata (like highlights) to the text buffer.
 
@@ -74,7 +74,6 @@ Planned improvements include advanced editing, performance boosts, and better UI
 
 - **Line Numbers & Gutter UI**  
   Display line numbers and improve visual layout.
-
 
 - **Command Mode / Modal Editing**  
   Optional support for a Vim-style mode switcher.
