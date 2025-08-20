@@ -6,7 +6,7 @@
 [![Code Style: Clippy](https://img.shields.io/badge/style-clippy-4e8cff?logo=rust)](https://github.com/rust-lang/rust-clippy)
 
 **PikaNote** is a lightweight, terminal-based text editor written in **Rust**, focused on clean design, efficient terminal rendering, and a learning-first development approach.  
-Inspired by [hecto](https://github.com/raphlinus/hecto), PikaNote implements core editor functionality with clarity and precision.
+ PikaNote implements core editor functionality with clarity and precision.
 
 > ⚠️ **Work in Progress** — actively developed with more features on the way.
 
