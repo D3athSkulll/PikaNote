@@ -145,7 +145,7 @@ impl Line {
             //iterate over all fragments from back to front
             let fragment_end = fragment_start;
             //to go to left keep the new fragment end as old fragment start
-            fragment_start.saturating_sub(fragment.rendered_width.into());
+            fragment_start =fragment_start.saturating_sub(fragment.rendered_width.into());
             //new fragment start = prev fragment start reduced by grapheme width of current fragment
             if fragment_start > range.end {
                 continue; // no processing needed if we havent reach visible range yet
@@ -200,7 +200,7 @@ impl Line {
         self.fragments.len()
     }
 
-    pub fn width_until(&self, grapheme_idx: GraphemeIdx) -> GraphemeIdx {
+    pub fn width_until(&self, grapheme_idx: GraphemeIdx) -> Col {
         self.fragments
             .iter()
             .take(grapheme_idx)
@@ -211,7 +211,7 @@ impl Line {
             .sum()
     }
 
-    pub fn width(&self) -> GraphemeIdx {
+    pub fn width(&self) -> Col {
         self.width_until(self.grapheme_count())
     } //convenience method to simplify CommandBar implementation
       // Inserts a character into the line, or appends it at the end if at == grapheme_count + 1
@@ -232,7 +232,7 @@ impl Line {
     }
 
     pub fn delete(&mut self, at: GraphemeIdx) {
-        debug_assert!(at.saturating_sub(1) <= self.grapheme_count());
+        debug_assert!(at <= self.grapheme_count());
         if let Some(fragment) = self.fragments.get(at) {
             let start = fragment.start_byte_idx;
             let end = fragment

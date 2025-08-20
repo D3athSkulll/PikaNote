@@ -1,5 +1,5 @@
 use crossterm::event::{
-     Event, KeyCode::{
+     KeyCode::{
         Backspace, Char, Delete, Enter, Tab,
     }, KeyEvent, KeyModifiers
 };

@@ -4,7 +4,7 @@ use super::super::{
     Col, Row, DocumentStatus, Line, Position, Size, Terminal, NAME, VERSION,
 };
 use super::UIComponent;
-use std::{cmp::min, default, io::Error};
+use std::{cmp::min, io::Error};
 
 mod buffer;
 use buffer::Buffer;

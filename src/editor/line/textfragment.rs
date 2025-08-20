@@ -1,5 +1,5 @@
 use super::GraphemeWidth;
-#[derive(Clone)]
+#[derive(Clone,Debug)]
 pub struct TextFragment {
     pub grapheme: String,
     pub rendered_width: GraphemeWidth,

@@ -1,59 +1,91 @@
-# PikaNote
+# 📝 PikaNote
 
-A lightweight, terminal-based text editor built from scratch in **Rust** — inspired by the design philosophy of [hecto](https://github.com/raphlinus/hecto). This project is a learning-focused implementation of core editor functionality with a clean and efficient approach to terminal rendering.
+[![Rust](https://img.shields.io/badge/Rust-1.75+-orange?logo=rust)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](#)
+[![Code Style: Clippy](https://img.shields.io/badge/style-clippy-4e8cff?logo=rust)](https://github.com/rust-lang/rust-clippy)
 
-> Currently a **work in progress** — actively being developed and expanded.
+**PikaNote** is a lightweight, terminal-based text editor written in **Rust**, focused on clean design, efficient terminal rendering, and a learning-first development approach.  
+ PikaNote implements core editor functionality with clarity and precision.
+
+> ⚠️ **Work in Progress** — actively developed with more features on the way.
 
 ---
 
-## Current Features
+## ✨ Current Features
 
-- **Keypress Event Handling**  
-  Captures and processes real-time user input via keyboard.
+- **Keyboard Input & Event Handling**  
+  Real-time key event processing with support for character entry, navigation, and control keys.
+
+- **File Saving (`Ctrl + S`)** 💾  
+  Save current buffer contents to a file with overwrite support.
+
+- **Insert & Delete Text**  
+  Basic editing functions like character insertion, backspace, and line breaks are implemented.
+
+- **Text Viewer Capabilities**  
+  Supports opening and navigating through existing text files without editing.
+
+- **Search Functionality (`Ctrl + F` Trigger)** 🔍  
+  - Forward search for a query string
+  - Match highlighting using custom annotations 
+  - Backward search
+  - Incremental/live search
+  - Scroll to next/previous match
+    
+- **Annotated String System** 🧵  
+  Internal representation to attach metadata (like highlights) to the text buffer.
 
 - **Exit Shortcut (`Ctrl + Q`)**  
-  Gracefully exits the editor using a standard shortcut.
-
-- **Clean Terminal on Launch**  
-  Automatically clears the terminal screen on startup for a fresh session.
+  Gracefully exit the editor.
 
 - **Line Decoration**  
-  Displays a `⚡` symbol at the beginning of each line for a distinguished layout.
+  Adds a `⚡` symbol to every line as a placeholder UI element.
 
-- **Cursor Hiding**  
-  Cursor is hidden during runtime using terminal control for a focused UI.
+- **Clean Terminal Launch**  
+  Clears the screen for a fresh start on editor launch.
 
-- **Efficient Screen Drawing**  
-  Utilizes `crossterm::queue!` macro to optimize terminal rendering.
+- **Efficient Terminal Rendering**  
+  Uses `crossterm::queue!` for low-overhead redrawing.
 
-- **Static Analysis with Clippy**  
-  Integrated with `clippy` to maintain idiomatic and error-free Rust code.
+- **Status Bar**  
+  Display cursor position, file info, and editing mode.
+  
+- **Cursor Control**  
+  Dynamically hides the cursor during rendering for visual clarity.
+
+- **Code Quality with Clippy**  
+  Integrated with `clippy` to maintain idiomatic, warning-free Rust.
+
+---
+
+## 🔮 Upcoming Features
+
+Planned improvements include advanced editing, performance boosts, and better UI/UX:
+
+- **Efficient Buffer with `Ropey`**  
+  Replace basic buffer with [`ropey`](https://crates.io/crates/ropey) for fast editing and large file support.
+
+- **Syntax Highlighting with `syntect`**  
+  Language-aware color highlighting using [`syntect`](https://github.com/trishume/syntect).
+
+- **Undo/Redo Support**  
+  Track editing history and support reverting changes.
+
+- **Line Numbers & Gutter UI**  
+  Display line numbers and improve visual layout.
+
+- **Command Mode / Modal Editing**  
+  Optional support for a Vim-style mode switcher.
 
 ---
 
-## Upcoming Features
-
-Planned features will follow the development roadmap outlined in [hecto's documentation](https://github.com/raphlinus/hecto), including:
-
-- File I/O (open/save)
-- Editable buffer
-- Cursor navigation
-- Syntax highlighting
-- Text search
-- Undo/redo functionality
-
----
-## 🖼️ Terminal UI Preview
-Completion uptill now
-
-![PikaNote Terminal UI](images/Screenshot%20from%202025-04-13%2012-28-18.png)
-
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
 - Rust (latest stable version)  
-  [Install Rust](https://www.rust-lang.org/tools/install)
+  👉 [Install Rust](https://www.rust-lang.org/tools/install)
 
 ### Run Locally
 
