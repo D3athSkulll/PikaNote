@@ -110,6 +110,7 @@ impl Buffer {
     pub fn save_as(&mut self, file_name: &str)-> Result<(),Error>{
         let file_info = FileInfo::from(file_name);
         self.save_to_file(&file_info)?;
+        self.file_info = file_info;
         self.dirty = false;
         Ok(())
     }
