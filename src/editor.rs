@@ -78,7 +78,6 @@ impl Editor {
         let size = Terminal::size().unwrap_or_default();
         editor.handle_resize_command(size); // using default struct and calling resize on it to set up properly
 
-        editor.handle_resize_command(size);
         editor.update_message("HELP: Ctrl+F = Find | Ctrl+S = Save | Ctrl+Q = Quit");
 
         let args: Vec<String> = env::args().collect();
@@ -101,7 +100,6 @@ impl Editor {
             if self.should_quit {
                 break;
             }
-
             match read() {
                 Ok(event) => self.evaluate_event(event), // listen to keyboard or screen resize events
                 error => {

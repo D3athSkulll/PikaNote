@@ -20,7 +20,8 @@ pub trait UIComponent {
     // method to update size, implement this too in respective component
 
     fn render(&mut self, origin_row: usize) {
-        if let Err(err) = self.draw(origin_row) {
+        if self.needs_redraw(){
+            if let Err(err) = self.draw(origin_row) {
             #[cfg(debug_assertions)]
             {
                 panic!("Could not render component: {err:?}");
@@ -32,6 +33,8 @@ pub trait UIComponent {
         } else {
             self.set_needs_redraw(false);
         }//restructure to not use match and muted the clippy warning
+        }
+        
     } // method to draw this component if it is in need of redrawing
 
     fn draw(&mut self, origin_row: usize) -> Result<(), Error>;

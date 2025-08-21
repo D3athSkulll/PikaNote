@@ -68,9 +68,9 @@ impl Buffer {
         for (line_idx,line) in self
             .lines
             .iter()
+            .enumerate()
             .rev()
             .cycle()
-            .enumerate()
             .skip(self.lines.len().saturating_sub(from.line_idx).saturating_sub(1))
             .take(self.lines.len().saturating_add(1))
         {
@@ -109,7 +109,7 @@ impl Buffer {
 
     pub fn save_as(&mut self, file_name: &str)-> Result<(),Error>{
         let file_info = FileInfo::from(file_name);
-        self.save_to_file(&file_info);
+        self.save_to_file(&file_info)?;
         self.dirty = false;
         Ok(())
     }

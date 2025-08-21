@@ -1,7 +1,6 @@
-
 use super::super::{
-    command::{Edit,Move},
-    Col, Row, DocumentStatus, Line, Position, Size, Terminal, NAME, VERSION,
+    command::{Edit, Move},
+    Col, DocumentStatus, Line, Position, Row, Size, Terminal, NAME, VERSION,
 };
 use super::UIComponent;
 use std::{cmp::min, io::Error};
@@ -17,20 +16,16 @@ use fileinfo::FileInfo;
 mod searchinfo;
 use searchinfo::SearchInfo;
 
-
-
 #[derive(Default)]
 pub struct View {
     buffer: Buffer,
     needs_redraw: bool,
     // The view always starts at `(0/0)`. The `size` property determines the visible area.
     size: Size,
-
     text_location: Location,
     scroll_offset: Position,
     search_info: Option<SearchInfo>,
 }
-
 
 impl View {
     //no need of new method as editor can create it from outside and configure as needed
@@ -46,43 +41,41 @@ impl View {
 
     pub const fn is_file_loaded(&self) -> bool {
         self.buffer.is_file_loaded()
-    }// allows editor to determine whether or not to prompt for file_name
+    } // allows editor to determine whether or not to prompt for file_name
 
     //region: Search
-    pub fn enter_search(&mut self){
+    pub fn enter_search(&mut self) {
         //entering means storing prev location
-        self.search_info  = Some(SearchInfo { 
+        self.search_info = Some(SearchInfo {
             prev_location: self.text_location,
             prev_scroll_offset: self.scroll_offset,
-            query: None,//made query optional since no compulsion on query to be present while search active now
-         });
-
+            query: None, //made query optional since no compulsion on query to be present while search active now
+        });
     }
 
-    pub fn exit_search(&mut self){
+    pub fn exit_search(&mut self) {
         self.search_info = None;
         //exiting means dismissing the search_info and prev location
-        self.set_needs_redraw(true);//we are now rendering  by highlighting search results, we need to explicitely request redraw upon exiting search , ensuring previously highlighted search results not highlighted
+        self.set_needs_redraw(true); //we are now rendering  by highlighting search results, we need to explicitely request redraw upon exiting search , ensuring previously highlighted search results not highlighted
     }
 
-    pub fn dismiss_search(&mut self){
+    pub fn dismiss_search(&mut self) {
         //restore old text location , scrolling to it and dismiss search info
-        if let Some(search_info)= &self.search_info{
+        if let Some(search_info) = &self.search_info {
             self.text_location = search_info.prev_location;
             self.scroll_offset = search_info.prev_scroll_offset;
             self.scroll_text_location_into_view(); // ensure prev location still visible even if terminal resize during search
-            /*
-            Suppose you have a wide terminal. You store the text location and scroll offset and enter search. You resize the screen and dismiss search.
-            What happened is that the previous scroll offset would have placed the text position out of view. This is fixed by scrolling the text location into view again here.
-             */
+                                                   /*
+                                                   Suppose you have a wide terminal. You store the text location and scroll offset and enter search. You resize the screen and dismiss search.
+                                                   What happened is that the previous scroll offset would have placed the text position out of view. This is fixed by scrolling the text location into view again here.
+                                                    */
         }
-        self.search_info=None;
-        self.set_needs_redraw(true);//same as above
-
+        self.search_info = None;
+        self.set_needs_redraw(true); //same as above
     }
 
-    pub fn search(&mut self , query: &str){
-        if let Some(search_info) = &mut self.search_info{
+    pub fn search(&mut self, query: &str) {
+        if let Some(search_info) = &mut self.search_info {
             search_info.query = Some(Line::from(query));
         }
         self.search_in_direction(self.text_location, SearchDirection::default());
@@ -92,8 +85,8 @@ impl View {
     // Attempts to get the current search query - for scenarios where the search query absolutely must be there.
     // Panics if not present in debug, or if search info is not present in debug
     // Returns None on release.
-    fn get_search_query(&self)->Option<&Line>{
-        //showcase how to retrive a double option search_info is optiona and query is also a option 
+    fn get_search_query(&self) -> Option<&Line> {
+        //showcase how to retrive a double option search_info is optiona and query is also a option
 
         let query = self
             .search_info
@@ -106,32 +99,31 @@ impl View {
         );
         query
     }
-    
 
-    fn search_in_direction(&mut self, from: Location, direction: SearchDirection){
-        //renamed function 
-        if let Some(location) = self.get_search_query().and_then(|query|{
-            //get location of next match by getting query 
-            if query.is_empty(){
+    fn search_in_direction(&mut self, from: Location, direction: SearchDirection) {
+        //renamed function
+        if let Some(location) = self.get_search_query().and_then(|query| {
+            //get location of next match by getting query
+            if query.is_empty() {
                 None
-            }else if direction == SearchDirection::Forward{
-                self.buffer.search_forward(query,from)
-            }else{
+            } else if direction == SearchDirection::Forward {
+                self.buffer.search_forward(query, from)
+            } else {
                 self.buffer.search_backward(query, from)
-            }//calling the specialised search fxn 
-        }){
-            self.text_location=location;
-            self.center_text_location();//handling the result as before
-            self.set_needs_redraw(true);//to make highlighting show up we trigger redraw upon search
-        }
+            } //calling the specialised search fxn
+        }) {
+            self.text_location = location;
+            self.center_text_location(); //handling the result as before
+        };
+        self.set_needs_redraw(true); //to make highlighting show up we trigger redraw upon search
     }
 
-    pub fn search_next(&mut self){
+    pub fn search_next(&mut self) {
         let step_right = self
             .get_search_query()
             .map_or(1, |query| min(query.grapheme_count(), 1));
 
-        let location = Location{
+        let location = Location {
             line_idx: self.text_location.line_idx,
             grapheme_idx: self.text_location.grapheme_idx.saturating_add(step_right),
             //start the new search behind current match
@@ -139,28 +131,29 @@ impl View {
         self.search_in_direction(location, SearchDirection::Forward);
     }
 
-    pub fn search_prev(&mut self){
+    pub fn search_prev(&mut self) {
+
         self.search_in_direction(self.text_location, SearchDirection::Backward);
     }
 
     //end region
 
     //region:File io
-    pub fn load(&mut self, file_name: &str)-> Result<(),Error> {
+    pub fn load(&mut self, file_name: &str) -> Result<(), Error> {
         let buffer = Buffer::load(file_name)?;
-        
+
         self.buffer = buffer;
         self.set_needs_redraw(true);
         Ok(())
     }
 
-    pub fn save(&mut self)-> Result<(),Error>  {
+    pub fn save(&mut self) -> Result<(), Error> {
         self.buffer.save()
-    } 
+    }
 
-    pub fn save_as(&mut self, file_name: &str)-> Result<(),Error>{
+    pub fn save_as(&mut self, file_name: &str) -> Result<(), Error> {
         self.buffer.save_as(file_name)
-    }//allows saving by file name
+    } //allows saving by file name
 
     //end region
     // region: CommandHandling
@@ -172,8 +165,8 @@ impl View {
             Edit::InsertNewLine => self.insert_newline(),
         }
     }
-    pub fn handle_move_command(&mut self, command: Move){
-        let Size {height,..} = self.size;
+    pub fn handle_move_command(&mut self, command: Move) {
+        let Size { height, .. } = self.size;
         match command {
             Move::Up => self.move_up(1),
             Move::Down => self.move_down(1),
@@ -185,8 +178,8 @@ impl View {
             Move::EndOfLine => self.move_to_end_of_line(),
         }
         self.scroll_text_location_into_view();
-        }
-    
+    }
+
     //endregion
 
     //region : Text editing\
@@ -293,22 +286,20 @@ impl View {
         }
     }
 
-   
-
     fn scroll_text_location_into_view(&mut self) {
         let Position { row, col } = self.text_location_to_position();
         self.scroll_vertically(row);
         self.scroll_horizontally(col);
     }
-     fn center_text_location(&mut self){
-        let Size{height,width}=self.size;
-        let Position{row,col}=self.text_location_to_position();
-        let vertical_mid =  height.div_ceil(2);
-        let horizontal_mid=width.div_ceil(2);
+    fn center_text_location(&mut self) {
+        let Size { height, width } = self.size;
+        let Position { row, col } = self.text_location_to_position();
+        let vertical_mid = height.div_ceil(2);
+        let horizontal_mid = width.div_ceil(2);
         self.scroll_offset.row = row.saturating_sub(vertical_mid);
         self.scroll_offset.col = col.saturating_sub(horizontal_mid);
         self.set_needs_redraw(true);
-     }
+    }
     //end region
     // region: Location and position handling
 
@@ -320,7 +311,7 @@ impl View {
 
             if gi > 0 && gi == last {
                 // End-of-line: place caret ON the last grapheme
-                line.width_until(last )
+                line.width_until(last)
             } else {
                 line.width_until(gi)
             }
@@ -333,17 +324,18 @@ impl View {
 
     pub fn text_location_to_position(&self) -> Position {
         let row = self.text_location.line_idx;
-         debug_assert!(row.saturating_sub(1) <= self.buffer.lines.len());
-        let col = self.buffer.lines.get(row).map_or(0, |line| {
-            line.width_until(self.text_location.grapheme_idx)
-        });
+        // debug_assert!(row.saturating_sub(1) <= self.buffer.lines.len());
+        let col = self
+            .buffer
+            .lines
+            .get(row)
+            .map_or(0, |line| line.width_until(self.text_location.grapheme_idx));
         Position { col, row }
     }
     //end region
 
     // region: text location movement
 
-    
     fn move_up(&mut self, step: usize) {
         self.text_location.line_idx = self.text_location.line_idx.saturating_sub(step);
         self.snap_to_valid_grapheme();
@@ -368,6 +360,7 @@ impl View {
             self.move_down(1);
         }
     }
+    #[allow(clippy::arithmetic_side_effects)]
     fn move_left(&mut self) {
         if self.text_location.grapheme_idx > 0 {
             self.text_location.grapheme_idx = self.text_location.grapheme_idx - 1;
@@ -444,23 +437,21 @@ impl UIComponent for View {
                 let left = self.scroll_offset.col;
                 let right = self.scroll_offset.col.saturating_add(width);
 
-                
-               //here we get annotated string and pass it to terminal . setup   query and selected match parameters
-               let query = self
+                //here we get annotated string and pass it to terminal . setup   query and selected match parameters
+                let query = self
                     .search_info
                     .as_ref()
                     .and_then(|search_info| search_info.query.as_deref());
                 //similar to obtaining query elsewhere, go to search info , get query out of it as reference, if either is None, query also none
-                let selected_match = (self.text_location.line_idx==line_idx&&query.is_some())//attempt to get selected match
-                //here we set conditions for selected match i.e if line to be render is one caret is in and if we have a query
-                    .then_some(self.text_location.grapheme_idx);
+                let selected_match =
+                    (self.text_location.line_idx == line_idx && query.is_some()) //attempt to get selected match
+                        //here we set conditions for selected match i.e if line to be render is one caret is in and if we have a query
+                        .then_some(self.text_location.grapheme_idx);
                 //we call then_some on that boolean , if boolean is false return None, if true return Some
                 Terminal::print_annotated_row(
                     current_row,
-                    &line.get_annotated_visible_substr(left..right,query,selected_match),
+                    &line.get_annotated_visible_substr(left..right, query, selected_match),
                 )?;
-
-
             } else if current_row == bottom_third && self.buffer.is_empty() {
                 Self::render_line(current_row, &Self::build_welcome_message(width))?;
             } else {

@@ -311,6 +311,7 @@ impl Line {
         query: &str,
         from_grapheme_idx: GraphemeIdx,
     ) -> Option<GraphemeIdx> {
+        
         debug_assert!(from_grapheme_idx <= self.grapheme_count());
 
         if from_grapheme_idx == 0 {
@@ -349,7 +350,7 @@ impl Line {
     }
 }
 
-impl fmt::Display for Line {
+impl Display for Line {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}", self.string)
     }
