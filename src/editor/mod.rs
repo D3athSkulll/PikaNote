@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use crossterm::event::{read, Event, KeyEvent, KeyEventKind};
 use std::{
     env,
@@ -10,16 +11,13 @@ mod command;
 mod uicomponents;
 mod documentstatus;
 mod line;
-mod position;
-mod size;
 mod terminal;
 
 use annotatedstring::{AnnotatedString,AnnotationType};
 use uicomponents::{CommandBar, MessageBar, View, StatusBar, UIComponent};//contains the components as a whole
 use documentstatus::DocumentStatus;
 use line::Line;
-use position::{Col,Row,Position};
-use size::Size;
+
 use terminal::Terminal;
 
 use self::command::{
@@ -31,9 +29,6 @@ use self::command::{
 
 
 };
-
-pub const NAME: &str = env!("CARGO_PKG_NAME");
-pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const QUIT_TIMES: u8 = 3; // hardcoding amt of times to press Ctrl+Q
 

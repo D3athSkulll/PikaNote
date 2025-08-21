@@ -2,6 +2,9 @@ use std::{
     cmp::{max, min},
     fmt::{self, Display},
 };
+
+use super::ByteIdx;
+
 pub mod annotationtype;
 pub use annotationtype::AnnotationType;
 mod annotation;
@@ -28,32 +31,40 @@ impl AnnotatedString {
     pub fn add_annotation(
         &mut self,
         annotation_type: AnnotationType,
-        start_byte_idx: usize,
-        end_byte_idx: usize,
+        start: ByteIdx,
+        end: ByteIdx,
     ) {
-        debug_assert!(start_byte_idx <= end_byte_idx);
+        debug_assert!(start <= end);
         self.annotations.push(Annotation {
             annotation_type,
-            start_byte_idx,
-            end_byte_idx,
+            start,
+            end,
         });
     } //this allows adding an annotation to the string
 
-    pub fn replace(&mut self, start_byte_idx: usize, end_byte_idx: usize, new_string: &str) {
+    pub fn truncate_left_until(&mut self, untill: ByteIdx){
+        self.replace(0, untill, "");
+
+    }
+    pub fn truncate_right_from(&mut self, from: ByteIdx) {
+        self.replace(from, self.string.len(), "");
+    }
+     pub fn replace(&mut self, start: ByteIdx, end: ByteIdx, new_string: &str) {
         //create a string based on full string and replace bits of it untill only what we need is left
         //this replace fn remains at core for this
-        debug_assert!(start_byte_idx <= end_byte_idx);
-        let end_byte_idx = min(end_byte_idx, self.string.len());
+         let end = min(end, self.string.len());
+        debug_assert!(start <= end);
+        debug_assert!(start <= self.string.len());
         //normalise the replacement untill the length of string in case someone attempts to replace more than what we have
-        if start_byte_idx > end_byte_idx {
+        if start > end {
             return;
         }
         self.string
-            .replace_range(start_byte_idx..end_byte_idx, new_string);
+            .replace_range(start..end, new_string);
         //replaces our internal string
         // till now, some checks + replacing internal string
 
-        let replaced_range_len = end_byte_idx.saturating_sub(start_byte_idx); //range we want to replace
+        let replaced_range_len = end.saturating_sub(start); //range we want to replace
         let shortened = new_string.len() < replaced_range_len;
         let len_difference = new_string.len().abs_diff(replaced_range_len); //how much shorterr or longer is the range
 
@@ -64,17 +75,17 @@ impl AnnotatedString {
 
         self.annotations.iter_mut().for_each(|annotation| {
             //line gets a mutable reference to each annotation and performs below code, meaning items in self.annotations are changed without being copied or cloned
-            annotation.start_byte_idx = if annotation.start_byte_idx >= end_byte_idx {
+            annotation.start = if annotation.start >= end {
                 //case 1: start of annotation beyond end of insertion point
                 //here we need to move the annotation to right (if insert was bigger than removal) or to left if otherwise
 
                 //for annotation starting after replaced range we move the start index by difference in length
                 if shortened {
-                    annotation.start_byte_idx.saturating_sub(len_difference)
+                    annotation.start.saturating_sub(len_difference)
                 } else {
-                    annotation.start_byte_idx.saturating_add(len_difference)
+                    annotation.start.saturating_add(len_difference)
                 }
-            } else if annotation.start_byte_idx >= start_byte_idx {
+            } else if annotation.start >= start {
                 //case 2: start of annotation not beyound end of insertion but beyound start
                 //starts in middle
                 //here try to move the annotation to start accordingly , but at most to the boundaries
@@ -82,41 +93,41 @@ impl AnnotatedString {
 
                 if shortened {
                     max(
-                        start_byte_idx,
-                        annotation.start_byte_idx.saturating_sub(len_difference),
+                        start,
+                        annotation.start.saturating_sub(len_difference),
                     )
                 } else {
                     min(
-                        end_byte_idx,
-                        annotation.start_byte_idx.saturating_add(len_difference),
+                        end,
+                        annotation.start.saturating_add(len_difference),
                     )
                 }
             } else {
-                annotation.start_byte_idx
+                annotation.start
                 //case 3 : start was before insertion point nothing to do
             };
-            annotation.end_byte_idx = if annotation.end_byte_idx >= end_byte_idx {
+            annotation.end = if annotation.end >= end {
                 //for annotations ending after replaced range, we move the endindex by difference in length
                 if shortened {
-                    annotation.end_byte_idx.saturating_sub(len_difference)
+                    annotation.end.saturating_sub(len_difference)
                 } else {
-                    annotation.end_byte_idx.saturating_add(len_difference)
+                    annotation.end.saturating_add(len_difference)
                 }
-            } else if annotation.end_byte_idx >= start_byte_idx {
+            } else if annotation.end >= start {
                 // For annotations ending within the replaced range, we move the end index by the difference in length, constrained to the beginning or end of the replaced range.
                 if shortened {
                     max(
-                        start_byte_idx,
-                        annotation.end_byte_idx.saturating_sub(len_difference),
+                        start,
+                        annotation.end.saturating_sub(len_difference),
                     )
                 } else {
                     min(
-                        end_byte_idx,
-                        annotation.end_byte_idx.saturating_add(len_difference),
+                        end,
+                        annotation.end.saturating_add(len_difference),
                     )
                 }
             } else {
-                annotation.end_byte_idx
+                annotation.end
             }//counter part for end of annotation
         });
 
@@ -124,8 +135,8 @@ impl AnnotatedString {
         self.annotations.retain(|annotation|{
             //retain removes all annotation for which closure false,
             //here remove any annotation which are empty i.e start==end or outside string
-            annotation.start_byte_idx<annotation.end_byte_idx
-                && annotation.start_byte_idx< self.string.len()
+            annotation.start<annotation.end
+                && annotation.start< self.string.len()
         });
     }
 }

@@ -1,6 +1,6 @@
+use crate::editor::Line;
+use crate::prelude::*;
 
-use crate::editor::{Line, Position};
-use super::Location;
 pub struct SearchInfo {
     pub prev_location: Location,
     pub prev_scroll_offset: Position,

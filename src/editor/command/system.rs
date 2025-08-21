@@ -1,10 +1,10 @@
+use crate::prelude::*;
 use crossterm::event::{
     KeyCode::{self, Char},
     KeyEvent, KeyModifiers,
 };
 
 
-use super::Size;
 #[derive(Copy,Clone)]
 pub enum System{
     Save,

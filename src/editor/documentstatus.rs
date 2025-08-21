@@ -1,8 +1,9 @@
+use crate::prelude::*;
 #[derive(Default, PartialEq, Eq, Debug)] // Eq and partial eq allows comparisons  for checking status of rendering two cycles
 
 pub struct DocumentStatus {
     pub total_lines: usize,
-    pub current_line_idx: usize,
+    pub current_line_idx: LineIdx,
     pub is_modified: bool,
     pub file_name: String,
 }
