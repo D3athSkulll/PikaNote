@@ -2,4 +2,5 @@
 pub enum AnnotationType{
     Match,//regular search result
     SelectedMatch,//one currently selected if user hits enter they would end up at result
+    Digit, //new type ensures we can color in red
 }

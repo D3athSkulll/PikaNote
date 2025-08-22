@@ -11,7 +11,8 @@ use textfragment::TextFragment;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
 
-use super::{AnnotatedString, AnnotationType};
+use super::AnnotatedString;
+use super::Annotation;
 
 
 #[derive(Default, Clone)]
@@ -82,8 +83,7 @@ impl Line {
     }
 
     pub fn get_visible_graphemes(&self, range: Range<ColIdx>) -> String {
-        self.get_annotated_visible_substr(range, None, None)
-            .to_string()
+        self.get_annotated_visible_substr(range, None).to_string()
     }
 
     // Gets the annotated string in the given column index.
@@ -97,8 +97,8 @@ impl Line {
     pub fn get_annotated_visible_substr(
         &self,
         range: Range<ColIdx>, //visible part of string to print out
-        query: Option<&str>,  //search result to highlight
-        selected_match: Option<GraphemeIdx>, //query to be highlighted in special way
+        annotations: Option<&Vec<Annotation>>,//now takes vector instead of computing annotations themself
+        
     ) -> AnnotatedString {
         if range.start >= range.end {
             return AnnotatedString::default();
@@ -107,32 +107,12 @@ impl Line {
         let mut result = AnnotatedString::from(&self.string);
         //start with full string and  remove and replaec things untill arrive at destination
 
-        //Annotate it based on search results
-        if let Some(query) = query {
-            if !query.is_empty() {
-                // nested ifs to check if valid query present and non empty
-                self.find_all(query, 0..self.string.len()).iter().for_each(
-                    |(start, grapheme_idx)| {
-                        if let Some(selected_match) = selected_match {
-                            if *grapheme_idx == selected_match {
-                                //ifs to check  for selected match to be passed to fxn and selected match is same grapheme index than current found match
-                                result.add_annotation(
-                                    AnnotationType::SelectedMatch,
-                                    *start,
-                                    start.saturating_add(query.len()),
-                                );
-                                return;
-                            }
-                        }
-                        //for this case annotate the string at area of match with selected match , return early from closure
-                        result.add_annotation(
-                            AnnotationType::Match,
-                            *start,
-                            start.saturating_add(query.len()),
-                        );
-                        //on reaching this code we do get a match, but not selected match . for this annotate the string but with different annotation type
-                    },
-                );
+        // Apply annotations for this string
+        if let Some(annotations) = annotations {
+            for annotation in annotations {
+                result.add_annotation(annotation.annotation_type, annotation.start, annotation.end);
+
+        
             }
         }
         //insert replacement characters and truncating if needed
@@ -320,7 +300,7 @@ impl Line {
             .map(|(_, grapheme_idx)| *grapheme_idx)
     }
 
-    fn find_all(&self, query: &str, range: Range<ByteIdx>)->Vec<(ByteIdx,GraphemeIdx)>{
+    pub fn find_all(&self, query: &str, range: Range<ByteIdx>)->Vec<(ByteIdx,GraphemeIdx)>{
         let end = min(range.end, self.string.len());
         let start = range.start;
         debug_assert!(start<=end);

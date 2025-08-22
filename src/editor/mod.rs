@@ -7,13 +7,18 @@ use std::{
 };
 
 mod annotatedstring;
+pub mod annotationtype;
 mod command;
 mod uicomponents;
 mod documentstatus;
 mod line;
 mod terminal;
 
-use annotatedstring::{AnnotatedString,AnnotationType};
+pub use annotationtype::AnnotationType;
+mod annotation;
+use annotation::Annotation;
+
+use annotatedstring::AnnotatedString;
 use uicomponents::{CommandBar, MessageBar, View, StatusBar, UIComponent};//contains the components as a whole
 use documentstatus::DocumentStatus;
 use line::Line;
