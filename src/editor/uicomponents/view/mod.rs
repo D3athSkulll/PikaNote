@@ -34,11 +34,13 @@ impl View {
     //no need of new method as editor can create it from outside and configure as needed
 
     pub fn get_status(&self) -> DocumentStatus {
+        let file_info = self.buffer.get_file_info();
         DocumentStatus {
             total_lines: self.buffer.height(),
             current_line_idx: self.text_location.line_idx,
-            file_name: format!("{}", self.buffer.get_file_info()), // use of debug trait for file info
+            file_name: format!("{file_info}"), // use of debug trait for file info
             is_modified: self.buffer.is_dirty(),//Updates revolve around buffer grants no pub access to some fields 
+            file_type: file_info.get_file_type(),//propagate file_type around Document_Statues
         }
     }
 

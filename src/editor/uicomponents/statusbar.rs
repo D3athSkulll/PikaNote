@@ -39,10 +39,12 @@ impl UIComponent for StatusBar {
             "{} - {line_count} {modified_indicator}",
             self.current_status.file_name
         );
-        //Assemble whole status bar, with position indicator at back
+        //Assemble back part
         let position_indicator = self.current_status.position_indicator_to_string();
+        let file_type= self.current_status.file_type_to_string();
+        let back_part= format!("{file_type} | {position_indicator}"); // assemble filetype with position indicator
         let remainder_len = self.size.width.saturating_sub(beginning.len());
-        let status = format!("{beginning}{position_indicator:>remainder_len$}");
+        let status = format!("{beginning}{back_part:>remainder_len$}");
 
         //print status if it fits else return empty string
         let to_print = if status.len() <= self.size.width {

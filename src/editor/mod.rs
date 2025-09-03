@@ -13,11 +13,11 @@ mod uicomponents;
 mod documentstatus;
 mod line;
 mod terminal;
-
+mod filetype;
 pub use annotationtype::AnnotationType;
 mod annotation;
 use annotation::Annotation;
-
+use filetype::FileType;
 use annotatedstring::AnnotatedString;
 use uicomponents::{CommandBar, MessageBar, View, StatusBar, UIComponent};//contains the components as a whole
 use documentstatus::DocumentStatus;
