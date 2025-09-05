@@ -7,6 +7,13 @@
 // Valid/Should be highlighted:
 // '1' 'a' 'b' '👍' '\x1b', 'notacharacter' '\'', '\\' '1''2''3' '1'notchar'2'
 
+
+
+
+// Should be highlighted as lifetime specifier:
+// 'a 'this_is_cool <'abc> '123
+
+
 // Invalid Integers:
 
 // 1e, e3, e, 1e2e, 5.8e10.1
@@ -17,3 +24,4 @@
 
 // Invalid/ should not be highlighted:
 // "a", 'b c'
+
