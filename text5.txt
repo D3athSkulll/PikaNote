@@ -1,4 +1,4 @@
-21 needle at the start of the haystack
+needle at the start of the haystack
 haystack with needle in the middle
 what comes at the end is a needle
 invalid n eedle or need le nee

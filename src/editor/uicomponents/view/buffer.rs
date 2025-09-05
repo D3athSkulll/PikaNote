@@ -44,7 +44,7 @@ impl Buffer {
     )->Option<AnnotatedString>{
         self.lines.get(line_idx).map(|line|{
             line.get_annotated_visible_substr(range, 
-                highlighter.get_annotations(line_idx))
+                Some(&highlighter.get_annotations(line_idx)))
         })
     }// attempt to retrieve correct highlighted strng. gets the annotation from highlighter and calls updated method in line
 
