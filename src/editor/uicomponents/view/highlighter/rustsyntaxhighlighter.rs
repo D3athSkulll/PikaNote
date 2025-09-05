@@ -10,11 +10,38 @@ pub struct RustSyntaxHighlighter{
     highlights: HashMap<LineIdx, Vec<Annotation>>,
 }
 
+impl SyntaxHighlighter for RustSyntaxHighlighter{
+    fn highlight(&mut self, idx: LineIdx, line: &Line) {
+        let mut result = Vec::new();
+        for(start_idx,word) in line.split_word_bound_indices(){
+            if is_valid_number(word){
+                //only issue that if multiple digit come in action then instead of saving single annotation for each, we save as group 
+                result.push(Annotation{
+                    annotation_type: AnnotationType::Number,
+                    start: start_idx,
+                    end: start_idx.saturating_add(word.len()),
+                });
+            }
+        }
+        self.highlights.insert(idx,result);
+    }
+
+    fn get_annotations(&self, idx:LineIdx)->Option<&Vec<Annotation>> {
+        self.highlights.get(&idx)
+    }
+}
+
 fn is_valid_number(word: &str)->bool{
     //new fn to validate number
     if word.is_empty(){
         return false;
     }
+
+    if is_numeric_literal(word){
+        return true;
+        //check if its numeric literal before going over whole word
+    }
+
     let mut chars = word.chars();
 
     //checking first character
@@ -64,23 +91,25 @@ fn is_valid_number(word: &str)->bool{
     prev_was_digit//must end with a digit
 }
 
-impl SyntaxHighlighter for RustSyntaxHighlighter{
-    fn highlight(&mut self, idx: LineIdx, line: &Line) {
-        let mut result = Vec::new();
-        for(start_idx,word) in line.split_word_bound_indices(){
-            if is_valid_number(word){
-                //only issue that if multiple digit come in action then instead of saving single annotation for each, we save as group 
-                result.push(Annotation{
-                    annotation_type: AnnotationType::Number,
-                    start: start_idx,
-                    end: start_idx.saturating_add(word.len()),
-                });
-            }
-        }
-        self.highlights.insert(idx,result);
+fn is_numeric_literal(word: &str)->bool{
+    if word.len()<3 {
+        //for literal need a leading zero  , a suffix and atleast one digit
+        return false;
+    }
+    let mut chars = word.chars();
+    if chars.next() != Some('0'){
+        //check the first character for a leading  0
+        return false;
     }
 
-    fn get_annotations(&self, idx:LineIdx)->Option<&Vec<Annotation>> {
-        self.highlights.get(&idx)
-    }
+    let base = match chars.next(){
+        //check second character for proper base
+        Some('b'|'B') =>2,
+        Some('o'|'O') =>8,
+        Some('x'|'X') =>16,
+        _=> return false,
+    };
+
+    chars.all(|char| char.is_digit(base))
+    //.all returns true if passed closure is true for every entry in iterator and false otherwise
 }
