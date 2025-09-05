@@ -76,33 +76,106 @@ pub struct RustSyntaxHighlighter {
 impl SyntaxHighlighter for RustSyntaxHighlighter {
     fn highlight(&mut self, idx: LineIdx, line: &Line) {
         let mut result = Vec::new();
-        for (start_idx, word) in line.split_word_bound_indices() {
-            let mut annotation_type = None;
-            if is_valid_number(word) {
-                annotation_type = Some(AnnotationType::Number);
-            } else if is_keyword(word) {
-                annotation_type = Some(AnnotationType::Keyword);
-            } else if is_type(word) {
-                annotation_type = Some(AnnotationType::Type);
-            } else if is_known_value(word) {
-                annotation_type = Some(AnnotationType::KnownValue);
-            } //attempt to check and highlight each type
+        let mut iterator = line.split_word_bound_indices().peekable();
+        //peekable turns iterator into something where peek() can be used besides next()
+        //peek returns next item without advancing iterator and next returns next item and advances the iterator
 
-            if let Some(annotation_type) = annotation_type {
-                //only issue that if multiple digit come in action then instead of saving single annotation for each, we save as group
-                result.push(Annotation {
-                    annotation_type,
-                    start: start_idx,
-                    end: start_idx.saturating_add(word.len()),
-                });
-            }
+        while let Some((start_idx, _))= iterator.next(){
+            let remainder = &line[start_idx..];
+            //instead of passing word, now pass the remaining entire string , so highlighting fxn can use as many items as necessary for annotation
+
+            if let Some(mut annotation) = annotate_char(remainder)
+                .or_else(|| annotate_number(remainder))
+                .or_else(|| annotate_keyword(remainder))
+                .or_else(|| annotate_type(remainder))
+                .or_else(|| annotate_known_value(remainder))
+                //chaining all highlighting functions together
+                {
+                    annotation.shift(start_idx);
+                    //move annotation to right, so its index is relative to full string, not substring
+                    result.push(annotation);
+                    //skip over any subsequent word which is already annotated
+                    while let Some(&(next_idx,_))=iterator.peek(){
+                        //use peek to obtain next item 
+                        if next_idx>=annotation.end{
+                            break;
+                            //if next item is after current annotation, then consume it regularly in surrounding while, to start highlighting next part
+                            // this is done using peek
+                        }
+                        iterator.next();
+                        //for any case where word is still part of previous annotation, we want to consume and discard next word.
+                    } 
+                };
+                
         }
         self.highlights.insert(idx, result);
     }
 
+   
+
     fn get_annotations(&self, idx: LineIdx) -> Option<&Vec<Annotation>> {
         self.highlights.get(&idx)
     }
+}
+
+// use a helper fxn for taking remaining string , annotation type to apply to next word, validator fxn f. if fxn returns true, we annotate the word,
+//this is done by defining a closure and define the signature of F like done below  
+ fn annotate_next_word<F>(
+        string: &str,
+        annotation_type: AnnotationType,
+        validator:F,
+    )->Option<Annotation>
+    where
+        F: Fn(&str)->bool,{
+        if let Some(word)= string.split_word_bounds().next(){
+            if validator(word){
+                //only new thing in fn is calling validator fn which is pased as fn argument
+                return Some(Annotation{
+                    annotation_type,
+                    start:0,
+                    end: word.len(),
+                });
+            }
+        }
+        None
+    }
+
+fn annotate_number(string: &str)-> Option<Annotation>{
+    //using the new helper fxn, the highlighter fxn based on validator fn makes work easy
+    annotate_next_word(string, AnnotationType::Number, is_valid_number)
+}
+
+fn annotate_type(string: &str) -> Option<Annotation> {
+    annotate_next_word(string, AnnotationType::Type, is_type)
+}
+
+fn annotate_keyword(string: &str) -> Option<Annotation> {
+    annotate_next_word(string, AnnotationType::Keyword, is_keyword)
+}
+
+fn annotate_known_value(string: &str) -> Option<Annotation> {
+    annotate_next_word(string, AnnotationType::KnownValue, is_known_value)
+}
+
+fn annotate_char(string:&str)-> Option<Annotation>{
+    
+    let mut iter = string.split_word_bound_indices().peekable();
+    //use peek
+    if let Some((_,"\'"))= iter.next(){
+        //ensure opening quote is handled
+        if let Some((_,"\\")) = iter.peek(){
+            iter.next();//skip escape character
+        }
+        iter.next();//skip untill closing quote
+        if let Some((idx,"\'"))=iter.next(){
+            return Some(Annotation{
+                annotation_type: AnnotationType::Char,
+                start:0,
+                end: idx.saturating_add(1),//including the close quote in annotation
+            });
+        }
+    }
+    None
 }
 
 fn is_valid_number(word: &str) -> bool {

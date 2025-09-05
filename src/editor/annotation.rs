@@ -9,3 +9,11 @@ pub struct Annotation{
    
 }
 //represents annotation on AnnotatedString
+
+impl Annotation{
+    pub fn shift(&mut self, offset: ByteIdx){
+        //fn to     move annotation to right on a string . By this the highlighting functions will start to return annotation relative to substring passed
+        self.start = self.start.saturating_add(offset);
+        self.end = self.end.saturating_add(offset);
+    }
+}

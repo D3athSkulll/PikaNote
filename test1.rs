@@ -4,6 +4,8 @@
 // Literals:
 // 0x1, 0X2, 0b1, 0B0, 0X10F, 0o1
 
+// Valid/Should be highlighted:
+// '1' 'a' 'b' '👍' '\x1b', 'notacharacter' '\'', '\\' '1''2''3' '1'notchar'2'
 
 // Invalid Integers:
 
@@ -12,3 +14,6 @@
 // _100_1, 100_, 1_00_, _
 // Invalid Literals:
 // 0b102 0x1G, 1o108, 0xxx
+
+// Invalid/ should not be highlighted:
+// "a", 'b c'
