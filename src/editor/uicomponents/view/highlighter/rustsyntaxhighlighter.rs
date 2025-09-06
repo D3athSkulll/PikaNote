@@ -80,39 +80,36 @@ impl SyntaxHighlighter for RustSyntaxHighlighter {
         //peekable turns iterator into something where peek() can be used besides next()
         //peek returns next item without advancing iterator and next returns next item and advances the iterator
 
-        while let Some((start_idx, _))= iterator.next(){
+        while let Some((start_idx, _)) = iterator.next() {
             let remainder = &line[start_idx..];
             //instead of passing word, now pass the remaining entire string , so highlighting fxn can use as many items as necessary for annotation
 
-            if let Some(mut annotation) = annotate_char(remainder)
-                .or_else(|| annotate_lifetime_specifier(remainder))
+            if let Some(mut annotation) = annotate_single_line_comment(remainder)
+                .or_else(|| annotate_char(remainder))
                 .or_else(|| annotate_number(remainder))
                 .or_else(|| annotate_keyword(remainder))
                 .or_else(|| annotate_type(remainder))
                 .or_else(|| annotate_known_value(remainder))
-                //chaining all highlighting functions together
-                {
-                    annotation.shift(start_idx);
-                    //move annotation to right, so its index is relative to full string, not substring
-                    result.push(annotation);
-                    //skip over any subsequent word which is already annotated
-                    while let Some(&(next_idx,_))=iterator.peek(){
-                        //use peek to obtain next item 
-                        if next_idx>=annotation.end{
-                            break;
-                            //if next item is after current annotation, then consume it regularly in surrounding while, to start highlighting next part
-                            // this is done using peek
-                        }
-                        iterator.next();
-                        //for any case where word is still part of previous annotation, we want to consume and discard next word.
-                    } 
-                };
-                
+            //chaining all highlighting functions together
+            {
+                annotation.shift(start_idx);
+                //move annotation to right, so its index is relative to full string, not substring
+                result.push(annotation);
+                //skip over any subsequent word which is already annotated
+                while let Some(&(next_idx, _)) = iterator.peek() {
+                    //use peek to obtain next item
+                    if next_idx >= annotation.end {
+                        break;
+                        //if next item is after current annotation, then consume it regularly in surrounding while, to start highlighting next part
+                        // this is done using peek
+                    }
+                    iterator.next();
+                    //for any case where word is still part of previous annotation, we want to consume and discard next word.
+                }
+            };
         }
         self.highlights.insert(idx, result);
     }
-
-   
 
     fn get_annotations(&self, idx: LineIdx) -> Option<&Vec<Annotation>> {
         self.highlights.get(&idx)
@@ -120,28 +117,29 @@ impl SyntaxHighlighter for RustSyntaxHighlighter {
 }
 
 // use a helper fxn for taking remaining string , annotation type to apply to next word, validator fxn f. if fxn returns true, we annotate the word,
-//this is done by defining a closure and define the signature of F like done below  
- fn annotate_next_word<F>(
-        string: &str,
-        annotation_type: AnnotationType,
-        validator:F,
-    )->Option<Annotation>
-    where
-        F: Fn(&str)->bool,{
-        if let Some(word)= string.split_word_bounds().next(){
-            if validator(word){
-                //only new thing in fn is calling validator fn which is pased as fn argument
-                return Some(Annotation{
-                    annotation_type,
-                    start:0,
-                    end: word.len(),
-                });
-            }
+//this is done by defining a closure and define the signature of F like done below
+fn annotate_next_word<F>(
+    string: &str,
+    annotation_type: AnnotationType,
+    validator: F,
+) -> Option<Annotation>
+where
+    F: Fn(&str) -> bool,
+{
+    if let Some(word) = string.split_word_bounds().next() {
+        if validator(word) {
+            //only new thing in fn is calling validator fn which is pased as fn argument
+            return Some(Annotation {
+                annotation_type,
+                start: 0,
+                end: word.len(),
+            });
         }
-        None
     }
+    None
+}
 
-fn annotate_number(string: &str)-> Option<Annotation>{
+fn annotate_number(string: &str) -> Option<Annotation> {
     //using the new helper fxn, the highlighter fxn based on validator fn makes work easy
     annotate_next_word(string, AnnotationType::Number, is_valid_number)
 }
@@ -158,37 +156,47 @@ fn annotate_known_value(string: &str) -> Option<Annotation> {
     annotate_next_word(string, AnnotationType::KnownValue, is_known_value)
 }
 
-fn annotate_char(string:&str)-> Option<Annotation>{
-    
+fn annotate_char(string: &str) -> Option<Annotation> {
     let mut iter = string.split_word_bound_indices().peekable();
     //use peek
-    if let Some((_,"\'"))= iter.next(){
+    if let Some((_, "\'")) = iter.next() {
         //ensure opening quote is handled
-        if let Some((_,"\\")) = iter.peek(){
-            iter.next();//skip escape character
+        if let Some((_, "\\")) = iter.peek() {
+            iter.next(); //skip escape character
         }
-        iter.next();//skip untill closing quote
-        if let Some((idx,"\'"))=iter.next(){
-            return Some(Annotation{
+        iter.next(); //skip untill closing quote
+        if let Some((idx, "\'")) = iter.next() {
+            return Some(Annotation {
                 annotation_type: AnnotationType::Char,
-                start:0,
-                end: idx.saturating_add(1),//including the close quote in annotation
+                start: 0,
+                end: idx.saturating_add(1), //including the close quote in annotation
             });
         }
     }
     None
 }
 
-fn annotate_lifetime_specifier(string: &str)-> Option<Annotation>{
+fn annotate_lifetime_specifier(string: &str) -> Option<Annotation> {
     let mut iter = string.split_word_bound_indices();
-    if let Some((_,"\'"))=iter.next(){
-        if let Some((idx,next_word))=iter.next(){
-            return Some(Annotation{
+    if let Some((_, "\'")) = iter.next() {
+        if let Some((idx, next_word)) = iter.next() {
+            return Some(Annotation {
                 annotation_type: AnnotationType::LifeTimeSpecifier,
-                start:0,
-                end: idx.saturating_add(next_word.len())
+                start: 0,
+                end: idx.saturating_add(next_word.len()),
             });
         }
+    }
+    None
+}
+
+fn annotate_single_line_comment(string: &str) -> Option<Annotation> {
+    if string.starts_with("//") {
+        return Some(Annotation {
+            annotation_type: AnnotationType::Comment,
+            start: 0,
+            end: string.len(),
+        });
     }
     None
 }
@@ -286,4 +294,3 @@ fn is_type(word: &str) -> bool {
 fn is_known_value(word: &str) -> bool {
     KNOWN_VALUES.contains(&word)
 }
-

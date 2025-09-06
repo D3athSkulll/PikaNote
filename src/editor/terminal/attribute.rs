@@ -2,39 +2,38 @@ use crossterm::style::Color;
 
 use super::super::AnnotationType;
 
-pub struct Attribute{
+pub struct Attribute {
     pub foreground: Option<Color>,
     pub background: Option<Color>,
+} // struct defines attribute to be used by terminal. They define the styling to be applied to part of text , like bold, italics, underline
+  //here limit to color
 
-}// struct defines attribute to be used by terminal. They define the styling to be applied to part of text , like bold, italics, underline
-//here limit to color
-
-impl From<AnnotationType> for Attribute{
-    fn from(annotation_type: AnnotationType)->Self{
+impl From<AnnotationType> for Attribute {
+    fn from(annotation_type: AnnotationType) -> Self {
         //allows conversion of annotation type to attribute, seperating concerns , this will also map string highlights to specific colors
-        match annotation_type{
-            AnnotationType::Match=>Self{
-                foreground: Some(Color::Rgb{
+        match annotation_type {
+            AnnotationType::Match => Self {
+                foreground: Some(Color::Rgb {
                     r: 255,
                     g: 255,
                     b: 255,
                 }),
-                background: Some(Color::Rgb{
-                    r:211,
-                    g:211,
-                    b:211,
+                background: Some(Color::Rgb {
+                    r: 211,
+                    g: 211,
+                    b: 211,
                 }),
             },
-            AnnotationType::SelectedMatch=>Self{
-                foreground: Some(Color::Rgb{
+            AnnotationType::SelectedMatch => Self {
+                foreground: Some(Color::Rgb {
                     r: 255,
                     g: 255,
                     b: 255,
                 }),
-                background: Some(Color::Rgb{
-                    r:100,
-                    g:255,
-                    b:153,
+                background: Some(Color::Rgb {
+                    r: 100,
+                    g: 255,
+                    b: 153,
                 }),
             },
             AnnotationType::Number => Self {
@@ -44,9 +43,8 @@ impl From<AnnotationType> for Attribute{
                     b: 71,
                 }),
                 background: None,
-        
             },
-             AnnotationType::Keyword => Self {
+            AnnotationType::Keyword => Self {
                 foreground: Some(Color::Rgb {
                     r: 100,
                     g: 149,
@@ -78,7 +76,7 @@ impl From<AnnotationType> for Attribute{
                 }),
                 background: None,
             },
-             AnnotationType::LifeTimeSpecifier => Self {
+            AnnotationType::LifeTimeSpecifier => Self {
                 foreground: Some(Color::Rgb {
                     r: 102,
                     g: 205,
@@ -86,6 +84,14 @@ impl From<AnnotationType> for Attribute{
                 }),
                 background: None,
             },
-}
+            AnnotationType::Comment => Self {
+                foreground: Some(Color::Rgb {
+                    r: 34,
+                    g: 139,
+                    b: 34,
+                }),
+                background: None,
+            },
+        }
     }
 }
