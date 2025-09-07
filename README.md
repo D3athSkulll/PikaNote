@@ -1,95 +1,83 @@
 # 📝 PikaNote
 
-[![Rust](https://img.shields.io/badge/Rust-1.75+-orange?logo=rust)](https://www.rust-lang.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](#)
+[![Rust](https://img.shields.io/badge/Rust-1.75+-orange?logo=rust)](https://www.rust-lang.org/)  
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)  
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](#)  
 [![Code Style: Clippy](https://img.shields.io/badge/style-clippy-4e8cff?logo=rust)](https://github.com/rust-lang/rust-clippy)
 
-**PikaNote** is a lightweight, terminal-based text editor written in **Rust**, focused on clean design, efficient terminal rendering, and a learning-first development approach.  
- PikaNote implements core editor functionality with clarity and precision.
+**PikaNote** is a lightweight terminal-based text editor written in **Rust**.  
+It emphasizes clean design, efficient terminal rendering, and a clear implementation of core editor functionalities.
 
-> ⚠️ **Work in Progress** — actively developed with more features on the way.
+> ⚠️ **Work in Progress** — actively developed with further features planned.
 
 ---
 
-## ✨ Current Features
+## Features
 
 - **Keyboard Input & Event Handling**  
-  Real-time key event processing with support for character entry, navigation, and control keys.
+  Real-time processing of key events supporting character input, navigation, and control commands.
 
-- **File Saving (`Ctrl + S`)** 💾  
-  Save current buffer contents to a file with overwrite support.
+- **File Saving (`Ctrl + S`)**  
+  Save the current buffer to disk, with overwrite capability.
 
-- **Insert & Delete Text**  
-  Basic editing functions like character insertion, backspace, and line breaks are implemented.
+- **Text Editing**  
+  Supports insertion, deletion, and line breaks for basic editing.
 
-- **Text Viewer Capabilities**  
-  Supports opening and navigating through existing text files without editing.
+- **File Viewing**  
+  Open and navigate existing text files, including read-only modes.
 
-- **Search Functionality (`Ctrl + F` Trigger)** 🔍  
-  - Forward search for a query string
-  - Match highlighting using custom annotations 
-  - Backward search
-  - Incremental/live search
-  - Scroll to next/previous match
-    
-- **Annotated String System** 🧵  
-  Internal representation to attach metadata (like highlights) to the text buffer.
+- **Search (`Ctrl + F`)**  
+  - Forward and backward search within the document  
+  - Incremental (live) search with match highlighting  
+  - Navigation between search matches
 
-- **Exit Shortcut (`Ctrl + Q`)**  
-  Gracefully exit the editor.
+- **Annotated String System**  
+  Internal metadata management allowing features such as search match highlighting.
 
 - **Line Decoration**  
-  Adds a `⚡` symbol to every line as a placeholder UI element.
+  Each line is prefixed with a visual marker (`⚡`) for UI clarity.
 
-- **Clean Terminal Launch**  
-  Clears the screen for a fresh start on editor launch.
-
-- **Efficient Terminal Rendering**  
-  Uses `crossterm::queue!` for low-overhead redrawing.
+- **Terminal Rendering**  
+  Efficient screen updates leveraging `crossterm::queue!` for minimal redraw overhead.
 
 - **Status Bar**  
-  Display cursor position, file info, and editing mode.
-  
+  Displays cursor position, file information, and editor mode.
+
 - **Cursor Control**  
-  Dynamically hides the cursor during rendering for visual clarity.
+  Dynamic hiding and restoring of the terminal cursor for clean rendering.
 
-- **Code Quality with Clippy**  
-  Integrated with `clippy` to maintain idiomatic, warning-free Rust.
+- **Graceful Exit (`Ctrl + Q`)**  
+  Exits the editor safely restoring terminal state.
 
----
-
-## 🔮 Upcoming Features
-
-Planned improvements include advanced editing, performance boosts, and better UI/UX:
-
-- **Efficient Buffer with `Ropey`**  
-  Replace basic buffer with [`ropey`](https://crates.io/crates/ropey) for fast editing and large file support.
-
-- **Syntax Highlighting with `syntect`**  
-  Language-aware color highlighting using [`syntect`](https://github.com/trishume/syntect).
-
-- **Undo/Redo Support**  
-  Track editing history and support reverting changes.
-
-- **Line Numbers & Gutter UI**  
-  Display line numbers and improve visual layout.
-
-- **Command Mode / Modal Editing**  
-  Optional support for a Vim-style mode switcher.
+- **Code Quality**  
+  Enforced via `clippy` to ensure idiomatic, warning-free Rust code.
 
 ---
 
-## 🚀 Getting Started
+## Planned Enhancements
+
+- Integration of [`ropey`](https://crates.io/crates/ropey) for efficient buffer management and large file support.
+
+- Syntax highlighting powered by [`syntect`](https://github.com/trishume/syntect).
+
+- Undo/Redo functionality to track and revert edits.
+
+- Display of line numbers and gutter for improved navigation.
+
+- Optional modal editing similar to Vim’s command mode.
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
 - Rust (latest stable version)  
-  👉 [Install Rust](https://www.rust-lang.org/tools/install)
+  Install from [https://www.rust-lang.org/tools/install](https://www.rust-lang.org/tools/install)
 
-### Run Locally
+### Build and Run
 
 ```bash
-git clone https://github.com/D3athSkulll/Text-Editor.git
-cd Text-Editor
+git clone https://github.com/D3athSkulll/PikaNote.git
+cd PikaNote
 cargo run

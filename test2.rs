@@ -1,4 +1,4 @@
-fn main() {
+fn main(a: int ) {
     let regular_str = "Hello, World!";
     let str_with_escape = "Hello \"Hello\" Hello!";
     let str_with_escape = "\"Hello\"\" Hello!";
