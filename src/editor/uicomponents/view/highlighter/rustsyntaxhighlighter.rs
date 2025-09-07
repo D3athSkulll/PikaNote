@@ -70,6 +70,7 @@ use crate::prelude::*;
 pub struct RustSyntaxHighlighter {
     highlights: Vec<Vec<Annotation>>,
     ml_comment_balance: usize,
+    in_ml_string: bool,
 }
 impl RustSyntaxHighlighter {
     fn annotate_ml_comment(&mut self, string: &str) -> Option<Annotation> {
@@ -106,28 +107,84 @@ impl RustSyntaxHighlighter {
             end: string.len(),
         })
     }
+    fn annotate_string(&mut self, string: &str) -> Option<Annotation> {
+        let mut chars = string.char_indices();
+        while let Some((idx, char)) = chars.next() {
+            if char == '\\' && self.in_ml_string {
+                //check escape character, only while already in string . if so discard the escape character
+                chars.next(); //skip the escape character
+                continue;
+            }
+            if char == '"' {
+                //handle quote
+                if self.in_ml_string {
+                    //if in string set it false and return annotation
+                    self.in_ml_string = false;
+                    return Some(Annotation {
+                        annotation_type: AnnotationType::String,
+                        start: 0,
+                        end: idx.saturating_add(1),
+                    });
+                }
+                self.in_ml_string = true;
+            }
+            if !self.in_ml_string {
+                //if not in string at this point , means we not start with multi line string and not detected opening quote
+                return None;
+            }
+        }
+        self.in_ml_string.then_some(Annotation {
+            annotation_type: AnnotationType::String,
+            start: 0,
+            end: string.len(),
+        })
+    }
+    fn initial_annotation(&mut self, line: &Line) -> Option<Annotation> {
+        if self.in_ml_string {
+            self.annotate_string(line)
+        } else if self.ml_comment_balance > 0 {
+            self.annotate_ml_comment(line)
+        } else {
+            None
+        }
+    }
+
+    fn annotate_remainder(&mut self,remainder: &str)->Option<Annotation>{
+        self.annotate_ml_comment(remainder)
+            .or_else(|| self.annotate_string(remainder))
+            .or_else(|| annotate_single_line_comment(remainder))
+            .or_else(|| annotate_char(remainder))
+            .or_else(|| annotate_lifetime_specifier(remainder))
+            .or_else(|| annotate_number(remainder))
+            .or_else(|| annotate_keyword(remainder))
+            .or_else(|| annotate_type(remainder))
+            .or_else(|| annotate_known_value(remainder))
+    }
 }
 impl SyntaxHighlighter for RustSyntaxHighlighter {
     fn highlight(&mut self, idx: LineIdx, line: &Line) {
-         debug_assert_eq!(idx, self.highlights.len());
+        debug_assert_eq!(idx, self.highlights.len());
         let mut result = Vec::new();
         let mut iterator = line.split_word_bound_indices().peekable();
         //peekable turns iterator into something where peek() can be used besides next()
         //peek returns next item without advancing iterator and next returns next item and advances the iterator
+        if let Some(annotation) = self.initial_annotation(line) {
+            //handle dangling multi line annotations (i.e. ML comments or strings)
 
+            result.push(annotation);
+            // Skip over any subsequent word which has already been annotated in this step
+            while let Some(&(next_idx, _)) = iterator.peek() {
+                if next_idx >= annotation.end {
+                    break;
+                }
+                iterator.next();
+            }
+        }
         while let Some((start_idx, _)) = iterator.next() {
             let remainder = &line[start_idx..];
             //instead of passing word, now pass the remaining entire string , so highlighting fxn can use as many items as necessary for annotation
 
-            if let Some(mut annotation) = self
-                .annotate_ml_comment(remainder)
-                .or_else(|| annotate_single_line_comment(remainder))
-                .or_else(|| annotate_char(remainder))
-                .or_else(|| annotate_lifetime_specifier(remainder))
-                .or_else(|| annotate_number(remainder))
-                .or_else(|| annotate_keyword(remainder))
-                .or_else(|| annotate_type(remainder))
-                .or_else(|| annotate_known_value(remainder))
+            if let Some(mut annotation) = self.annotate_remainder(remainder) 
             //chaining all highlighting functions together
             {
                 annotation.shift(start_idx);
@@ -141,7 +198,7 @@ impl SyntaxHighlighter for RustSyntaxHighlighter {
                         //if next item is after current annotation, then consume it regularly in surrounding while, to start highlighting next part
                         // this is done using peek
                     }
-                    iterator.next();    
+                    iterator.next();
                     //for any case where word is still part of previous annotation, we want to consume and discard next word.
                 }
             };
