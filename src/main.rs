@@ -9,27 +9,41 @@
 mod editor;
 use editor::Editor;
 mod logger;
+use logger::Logger;
+use log::{error,info};
 mod prelude;
 
-use log::{error, info};
+use crate::prelude::*;
+
 
 fn main() {
-    // Initialize logging system
-    logger::setup_logger().expect("Failed to set up logger");
+    let logger = Logger::new("logs",{NAME});
+    if let Err(e) = logger.init(){
+        eprintln!("Failed to initialize {NAME}: {}", e);
+        return;
+    }
 
-    info!("Starting PikaNote editor...");
+    info!("Logger initialized, Starting {NAME} editor... ");
 
-    // Construct editor
-    let mut editor = match Editor::new() {
-        Ok(ed) => ed,
-        Err(e) => {
-            error!("Failed to initialize editor: {}", e);
+    //create editor instance
+    let mut editor = match Editor::new(){
+        Ok(ed)=>{
+            info!("Editor initialized successfully.");
+            ed
+        },
+        Err(e)=>{
+            error!("Failed to initialize Editor: {}",e);
             return;
         }
     };
 
-    match editor.run() {
-        Ok(_) => info!("Editor exited successfully."),
-        Err(e) => error!("Editor terminated with error: {}", e),
+    // Run editor
+    if let Err(e) = editor.run() {
+        error!("Editor terminated with error: {}", e);
+    } else {
+        info!("Editor exited successfully.");
     }
+
+    info!("{NAME} editor closed.");
+
 }
