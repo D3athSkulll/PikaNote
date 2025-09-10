@@ -93,28 +93,24 @@ impl Editor {
     }
     // end region
     //region : Event Loop
-    pub fn run(&mut self) {
+    pub fn run(&mut self)->Result<(),std::io::Error> {
         loop {
-            self.refresh_screen(); // draw UI
+        self.refresh_screen();
 
-            if self.should_quit {
-                break;
-            }
-            match read() {
-                Ok(event) => self.evaluate_event(event), // listen to keyboard or screen resize events
-                error => {
-                    #[cfg(debug_assertions)]
-                    {
-                        panic!("Could not read event: {error:?}");
-                    }
-                       #[cfg(not(debug_assertions))]
-                    {
-                        let _ = err;
-                    }
-                }
-            }
-            self.refresh_status();//we have better method to refresh now
+        if self.should_quit {
+            break;
         }
+
+        match read() {
+            Ok(event) => self.evaluate_event(event),
+            Err(e) => {
+                return Err(std::io::Error::new(std::io::ErrorKind::Other, e));
+            }
+        }
+
+        self.refresh_status();
+    }
+    Ok(())
     }
     
         fn refresh_screen(&mut self) {
